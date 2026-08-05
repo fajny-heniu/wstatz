@@ -107,6 +107,18 @@ SZABLON = """<!DOCTYPE html>
     flex-wrap: wrap; gap: 10px; align-items: center; }
   .controls .hint { flex: 1 1 100%; }
 
+  .legenda-tabeli {
+    max-width: 1240px; margin: 0 auto 18px;
+    font-size: 12px; line-height: 1.7; color: var(--muted);
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    padding: 9px 2px;
+  }
+  .legenda-tabeli b {
+    font-family: var(--data); font-weight: 700; color: #5a6066;
+    letter-spacing: .02em;
+  }
+  .legenda-tabeli span { margin-right: 14px; white-space: nowrap; }
+
   /* forma z 5 ostatnich meczow */
   .forma {
     max-width: 1240px; margin: 0 auto 26px;
@@ -235,6 +247,8 @@ SZABLON = """<!DOCTYPE html>
 
 <div class="forma" id="forma"></div>
 
+<div class="compare" id="domwyjazd"></div>
+
 <div class="controls">
   <button id="mode" aria-pressed="false">Zestaw kolejka do kolejki</button>
   <button id="wykresy" aria-pressed="false">Pokaż wykres pozycji</button>
@@ -242,6 +256,17 @@ SZABLON = """<!DOCTYPE html>
 </div>
 
 <div class="charts" id="charts" hidden></div>
+
+<p class="legenda-tabeli">
+  <span><b>Wynik</b> — wynik meczu</span>
+  <span><b>xG</b> — oczekiwane gole Widzewa</span>
+  <span><b>Strz</b> — strzały łącznie</span>
+  <span><b>N.br</b> — strzały na bramkę</span>
+  <span><b>W.sz</b> — wielkie szanse</span>
+  <span><b>%Pod</b> — podania celne</span>
+  <span><b>Pkt</b> — punkty ligowe narastająco</span>
+  <span><b>Poz</b> — miejsce w tabeli po tej kolejce</span>
+</p>
 
 <div class="seasons" id="seasons"></div>
 
@@ -296,6 +321,35 @@ function renderForma() {
   ).join("");
   el.innerHTML = `<b>Forma</b><span class="boxes">${boxes}</span>
     <span class="legenda">ostatnie 5 kolejek · ${pelny(teraz)}</span>`;
+}
+
+// Bilans liczony wprost z pola venue, ktore juz siedzi w kazdym meczu -
+// zero nowych danych, tylko inny przekroj tego, co juz mamy.
+function bilansWedlugMiejsca(sezon, venue) {
+  const mecze = DANE.sezony[sezon].mecze.filter(m => m.venue === venue && m.rezultat);
+  const w = mecze.filter(m => m.rezultat === "W").length;
+  const r = mecze.filter(m => m.rezultat === "R").length;
+  const p = mecze.filter(m => m.rezultat === "P").length;
+  const n = w + r + p;
+  const pkt = w * 3 + r;
+  return { w, r, p, n, pkt, pktNaMecz: n ? pkt / n : null };
+}
+
+function renderDomWyjazd() {
+  const el = document.getElementById("domwyjazd");
+  if (!teraz) { el.innerHTML = ""; return; }
+  function box(etykieta, b) {
+    const bilansTxt = b.n ? `${b.w}-${b.r}-${b.p}` : "–";
+    const pktTxt = b.n
+      ? `${b.pkt} pkt · ${b.pktNaMecz.toFixed(2)}/mecz`
+      : "brak rozegranych";
+    return `<div class="metric"><b>${etykieta}</b>
+      <div class="row now"><span class="val">${bilansTxt}</span></div>
+      <div class="row was"><span class="val">${pktTxt}</span></div></div>`;
+  }
+  el.innerHTML =
+    box("W domu", bilansWedlugMiejsca(teraz, "H")) +
+    box("Na wyjeździe", bilansWedlugMiejsca(teraz, "A"));
 }
 
 function naglowek() {
@@ -506,6 +560,7 @@ document.getElementById("wykresy").addEventListener("click", e => {
 naglowek();
 compare();
 renderForma();
+renderDomWyjazd();
 stopka();
 render();
 </script>
