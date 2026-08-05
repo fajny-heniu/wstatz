@@ -245,6 +245,9 @@ SZABLON = """<!DOCTYPE html>
   .match .w { font-weight: 700; color: var(--oxblood); }
   .score { font-weight: 700; }
   .xg { position: relative; }
+  .xg-widzew { color: var(--signal); font-weight: 700; }
+  .xg-sep { color: #c3bfb9; margin: 0 3px; font-weight: 400; }
+  .xg-rywal { color: #9aa1a7; font-weight: 400; }
   /* slad xG pod liczba - dane, nie ozdoba */
   .xg i {
     position: absolute; left: 4px; right: 4px; bottom: 2px; height: 2px;
@@ -291,7 +294,7 @@ SZABLON = """<!DOCTYPE html>
 
 <p class="legenda-tabeli">
   <span><b>Wynik</b> — wynik meczu</span>
-  <span><b>xG</b> — oczekiwane gole Widzewa</span>
+  <span><b>xG</b> — oczekiwane gole: Widzew – rywal</span>
   <span><b>Strz</b> — strzały łącznie</span>
   <span><b>N.br</b> — strzały na bramkę</span>
   <span><b>W.sz</b> — wielkie szanse</span>
@@ -493,6 +496,9 @@ function wiersz(m) {
     ? `<span class="w">${m.gosc}</span>` : m.gosc;
   const xgBar = m.widzew_xg !== null
     ? `<i style="transform:scaleX(${Math.min(m.widzew_xg / 2.8, 1)})"></i>` : "";
+  const xgRywal = m.rywal_xg !== null && m.rywal_xg !== undefined
+    ? `<span class="xg-sep">–</span><span class="xg-rywal">${fmt(m.rywal_xg, 2)}</span>`
+    : "";
   const pusto = v => v === null || v === undefined
     ? '<span class="none">–</span>' : v;
   return `<tr>
@@ -500,7 +506,7 @@ function wiersz(m) {
     <td class="k">${m.kolejka}</td>
     <td class="match">${gospodarz} – ${gosc}</td>
     <td class="score">${m.wynik || "–"}</td>
-    <td class="xg">${fmt(m.widzew_xg, 2)}${xgBar}</td>
+    <td class="xg"><span class="xg-widzew">${fmt(m.widzew_xg, 2)}</span>${xgRywal}${xgBar}</td>
     <td>${pusto(m.widzew_shots)}</td>
     <td>${pusto(m.widzew_sot)}</td>
     <td>${pusto(m.widzew_bc)}</td>
