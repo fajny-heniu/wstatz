@@ -1,0 +1,3 @@
+season,round,date,competition,venue,home_team,away_team,score_ht,score_ft,xg_home,xg_away,shots_home,shots_away,sot_home,sot_away,bc_home,bc_away,passes_home,passes_away,passes_acc_home,passes_acc_away,pass_pct_home,pass_pct_away,poss_home,poss_away,position,fixture_id
+2026/27,2,2026-07-31,Ekstraklasa,A,Wisła Płock,Widzew Łódź,,0:0,1.53,1.79,15,16,1,3,3,5,331,411,253,356,76,87,45,55,13,jPftWPiC
+2026/27,1,2026-07-26,Ekstraklasa,H,Widzew Łódź,Motor Lublin,,2:2,2.50,1.34,19,11,3,5,4,4,391,361,330,283,84,78,53,47,8,KKjYSau3
