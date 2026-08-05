@@ -207,6 +207,11 @@
     white-space: nowrap; position: sticky; top: 0; background: var(--panel);
   }
   thead th.match, thead th.gutter { text-align: left; }
+  thead th.sortowalna { cursor: pointer; user-select: none; }
+  thead th.sortowalna:hover { color: var(--oxblood); }
+  /* w trybie zestawienia sortowanie psuloby wyrownanie kolejek - wygaszamy */
+  .align-mode thead th.sortowalna { cursor: default; opacity: .5; }
+  .align-mode thead th.sortowalna:hover { color: var(--muted); }
   td { padding: 6px; border-bottom: 1px solid #eceae6; text-align: right; white-space: nowrap; }
   tbody tr:hover td { background: #f2efe9; }
   .gutter { width: 16px; padding-left: 12px; }
@@ -260,7 +265,7 @@
 <div class="controls">
   <button id="mode" aria-pressed="false">Zestaw kolejka do kolejki</button>
   <button id="wykresy" aria-pressed="false">Pokaż wykres pozycji</button>
-  <p class="hint" id="hint">Najnowsza kolejka u góry, każdy sezon niezależnie.</p>
+  <p class="hint" id="hint">Najnowsza kolejka u góry. Kliknij nagłówek kolumny (np. xG), aby sortować — osobno dla każdego sezonu.</p>
 </div>
 
 <div class="charts" id="charts" hidden></div>
@@ -292,6 +297,44 @@ const METRYKI = [
 const sezony = Object.keys(DANE.sezony).sort().reverse();  // biezacy pierwszy
 const [teraz, wczesniej] = sezony;
 let alignByRound = false;
+const sortState = {};  // { "2026/27": {key:"widzew_xg", dir:"asc"} } - per sezon niezaleznie
+
+// Definicja kolumn tabeli w jednym miejscu - naglowek, klasa, klucz do sortowania.
+// key===null oznacza kolumne nieklikalna (rynsztok, przeciwnik, wynik meczu).
+const KOLUMNY = [
+  { key: null, label: "", cls: "gutter" },
+  { key: "kolejka", label: "K", cls: "k" },
+  { key: null, label: "Gospodarz – Gość", cls: "match" },
+  { key: null, label: "Wynik", cls: "" },
+  { key: "widzew_xg", label: "xG", cls: "" },
+  { key: "widzew_shots", label: "Strz", cls: "" },
+  { key: "widzew_sot", label: "N.br", cls: "" },
+  { key: "widzew_bc", label: "W.sz", cls: "" },
+  { key: "widzew_pass_pct", label: "%Pod", cls: "" },
+  { key: "punkty_do", label: "Pkt", cls: "" },
+  { key: "pozycja", label: "Poz", cls: "" },
+];
+
+// Braki (null) zawsze na koniec, niezaleznie od kierunku - inaczej mecze bez
+// danych "skacza" na gore przy sortowaniu rosnacym, co jest zaskakujace.
+function porownaj(a, b, key, dir) {
+  const av = a[key], bv = b[key];
+  const aNull = av === null || av === undefined;
+  const bNull = bv === null || bv === undefined;
+  if (aNull && bNull) return 0;
+  if (aNull) return 1;
+  if (bNull) return -1;
+  return dir === "asc" ? av - bv : bv - av;
+}
+
+// Bez aktywnego sortowania: naturalna kolejnosc, czyli najnowsza kolejka
+// pierwsza - dokladnie tak jak dotad, DANE.mecze juz przychodzi w tym porzadku.
+function wierszeSezonu(sezon) {
+  const mecze = DANE.sezony[sezon].mecze.slice();
+  const stan = sortState[sezon];
+  if (!stan) return mecze;
+  return mecze.sort((a, b) => porownaj(a, b, stan.key, stan.dir));
+}
 
 function fmt(v, d) { return v === null || v === undefined ? "–" : v.toFixed(d); }
 
@@ -448,23 +491,30 @@ function wiersz(m) {
   </tr>`;
 }
 
-function tabela(sezon, kolejki) {
+function naglowekKolumny(sezon, col) {
+  if (!col.key) {
+    return `<th${col.cls ? ` class="${col.cls}"` : ""}>${col.label}</th>`;
+  }
+  const stan = sortState[sezon];
+  const aktywna = stan && stan.key === col.key;
+  const strzalka = aktywna ? (stan.dir === "asc" ? " ▲" : " ▼") : "";
+  const klasy = ["sortowalna", col.cls].filter(Boolean).join(" ");
+  return `<th class="${klasy}" data-key="${col.key}" data-sezon="${sezon}"
+    title="Sortuj po ${col.label}">${col.label}${strzalka}</th>`;
+}
+
+function tabela(sezon, wiersze) {
   const s = DANE.sezony[sezon];
-  const wg = {};
-  s.mecze.forEach(m => wg[m.kolejka] = m);
   const sr = s.srednie;
-  const body = kolejki.map(k => wg[k]
-    ? wiersz(wg[k])
+  const body = wiersze.map(m => m
+    ? wiersz(m)
     : `<tr class="empty"><td colspan="11"></td></tr>`).join("");
   const bil = sr.bilans ? `${sr.bilans.W}-${sr.bilans.R}-${sr.bilans.P}` : "";
+  const naglowki = KOLUMNY.map(c => naglowekKolumny(sezon, c)).join("");
   return `<section>
     <h2>${sezon}<span>${s.liczba_meczow} m. · ${bil}</span></h2>
     <div class="scroll"><table>
-      <thead><tr>
-        <th class="gutter"></th><th>K</th><th class="match">Gospodarz – Gość</th>
-        <th>Wynik</th><th>xG</th><th>Strz</th><th>N.br</th><th>W.sz</th>
-        <th>%Pod</th><th>Pkt</th><th>Poz</th>
-      </tr></thead>
+      <thead><tr>${naglowki}</tr></thead>
       <tbody>${body}</tbody>
       <tfoot><tr>
         <td class="gutter"></td><td></td>
@@ -479,15 +529,22 @@ function tabela(sezon, kolejki) {
 
 function render() {
   const el = document.getElementById("seasons");
+  el.classList.toggle("align-mode", alignByRound);
   if (alignByRound) {
-    // wspolna os kolejek, rosnaco - kolejka 1 obok kolejki 1
+    // wspolna os kolejek, rosnaco - kolejka 1 obok kolejki 1.
+    // sortowanie po innej kolumnie nie ma tu sensu (psuje wyrownanie), stad wylaczone.
     const maks = Math.max(...sezony.flatMap(s =>
       DANE.sezony[s].mecze.map(m => m.kolejka)));
-    const kolejki = Array.from({ length: maks }, (_, i) => i + 1);
-    el.innerHTML = sezony.map(s => tabela(s, kolejki)).join("");
+    const wg = {};
+    sezony.forEach(s => {
+      wg[s] = {};
+      DANE.sezony[s].mecze.forEach(m => wg[s][m.kolejka] = m);
+    });
+    el.innerHTML = sezony.map(s =>
+      tabela(s, Array.from({ length: maks }, (_, i) => wg[s][i + 1] || null))
+    ).join("");
   } else {
-    el.innerHTML = sezony.map(s => tabela(s,
-      DANE.sezony[s].mecze.map(m => m.kolejka))).join("");
+    el.innerHTML = sezony.map(s => tabela(s, wierszeSezonu(s))).join("");
   }
 }
 
@@ -558,8 +615,8 @@ document.getElementById("mode").addEventListener("click", e => {
   e.currentTarget.textContent = alignByRound
     ? "Najnowsza kolejka u góry" : "Zestaw kolejka do kolejki";
   document.getElementById("hint").textContent = alignByRound
-    ? "Kolejki zestawione od 1. Kreskowane wiersze to kolejki jeszcze nierozegrane."
-    : "Najnowsza kolejka u góry, każdy sezon niezależnie.";
+    ? "Kolejki zestawione od 1. Kreskowane wiersze to kolejki jeszcze nierozegrane. Sortowanie kolumn wyłączone w tym widoku."
+    : "Najnowsza kolejka u góry. Kliknij nagłówek kolumny (np. xG), aby sortować — osobno dla każdego sezonu.";
   render();
 });
 
@@ -576,6 +633,21 @@ document.getElementById("wykresy").addEventListener("click", e => {
     e.currentTarget.textContent = "Ukryj wykres pozycji";
     e.currentTarget.setAttribute("aria-pressed", "true");
   }
+});
+
+document.getElementById("seasons").addEventListener("click", e => {
+  const th = e.target.closest("th[data-key]");
+  if (!th || alignByRound) return;  // w trybie zestawienia sortowanie wylaczone
+  const sezon = th.dataset.sezon, key = th.dataset.key;
+  const obecny = sortState[sezon];
+  if (!obecny || obecny.key !== key) {
+    sortState[sezon] = { key, dir: "asc" };
+  } else if (obecny.dir === "asc") {
+    sortState[sezon] = { key, dir: "desc" };
+  } else {
+    delete sortState[sezon];  // trzeci klik - powrot do najnowszej kolejki na gorze
+  }
+  render();
 });
 
 naglowek();
