@@ -122,6 +122,32 @@
   .badge.q { background: var(--line); color: #9aa1a7; }
   .forma .legenda { font-size: 11.5px; color: var(--muted); }
 
+  /* dom/wyjazd: ta sama konwencja co tabele sezonow - obecny sezon po lewej.
+     section>h2 dziedziczy styl naglowka z tabel sezonow (selektor jest ogolny). */
+  .domwyjazd {
+    max-width: 1240px; margin: 0 auto 26px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
+  }
+  .dw-body { padding: 4px 14px 8px; }
+  .dw-line {
+    display: flex; align-items: baseline; gap: 10px;
+    padding: 9px 0; border-bottom: 1px solid #eceae6;
+  }
+  .dw-line:last-child { border-bottom: none; }
+  .dw-line .etyk {
+    flex: 1 1 auto; font-family: var(--label); font-size: 12px;
+    font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .dw-line .bil {
+    font-family: var(--data); font-size: 18px; font-weight: 600;
+    color: var(--signal);
+  }
+  .dw-line .pkt {
+    font-family: var(--data); font-size: 11.5px; color: #6f7479;
+    white-space: nowrap;
+  }
+
   /* wykres pozycji */
   .charts {
     max-width: 1240px; margin: 0 auto 22px;
@@ -211,6 +237,7 @@
     text-transform: uppercase; color: var(--muted); font-weight: 700; }
   @media (max-width: 860px) {
     .seasons { grid-template-columns: 1fr; }
+    .domwyjazd { grid-template-columns: 1fr; }
     thead th { position: static; }
   }
   @media (prefers-reduced-motion: no-preference) {
@@ -228,7 +255,7 @@
 
 <div class="forma" id="forma"></div>
 
-<div class="compare" id="domwyjazd"></div>
+<div class="domwyjazd" id="domwyjazd"></div>
 
 <div class="controls">
   <button id="mode" aria-pressed="false">Zestaw kolejka do kolejki</button>
@@ -318,19 +345,32 @@ function bilansWedlugMiejsca(sezon, venue) {
 
 function renderDomWyjazd() {
   const el = document.getElementById("domwyjazd");
-  if (!teraz) { el.innerHTML = ""; return; }
-  function box(etykieta, b) {
+
+  function linia(etykieta, b) {
     const bilansTxt = b.n ? `${b.w}-${b.r}-${b.p}` : "–";
     const pktTxt = b.n
       ? `${b.pkt} pkt · ${b.pktNaMecz.toFixed(2)}/mecz`
       : "brak rozegranych";
-    return `<div class="metric"><b>${etykieta}</b>
-      <div class="row now"><span class="val">${bilansTxt}</span></div>
-      <div class="row was"><span class="val">${pktTxt}</span></div></div>`;
+    return `<div class="dw-line">
+      <span class="etyk">${etykieta}</span>
+      <span class="bil">${bilansTxt}</span>
+      <span class="pkt">${pktTxt}</span>
+    </div>`;
   }
-  el.innerHTML =
-    box("W domu", bilansWedlugMiejsca(teraz, "H")) +
-    box("Na wyjeździe", bilansWedlugMiejsca(teraz, "A"));
+
+  function kolumna(sezon) {
+    return `<section>
+      <h2>${pelny(sezon)}</h2>
+      <div class="dw-body">
+        ${linia("W domu", bilansWedlugMiejsca(sezon, "H"))}
+        ${linia("Na wyjeździe", bilansWedlugMiejsca(sezon, "A"))}
+      </div>
+    </section>`;
+  }
+
+  // sezony = [teraz, wczesniej] - obecny sezon zawsze pierwszy, wiec ladowany
+  // do lewej kolumny gridu; ta sama konwencja co w tabelach ponizej.
+  el.innerHTML = sezony.map(kolumna).join("");
 }
 
 function naglowek() {
