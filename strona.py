@@ -246,8 +246,9 @@ SZABLON = """<!DOCTYPE html>
   .score { font-weight: 700; }
   .xg { position: relative; }
   .xg-widzew { color: var(--signal); font-weight: 700; }
-  .xg-sep { color: #c3bfb9; margin: 0 3px; font-weight: 400; }
-  .xg-rywal { color: #9aa1a7; font-weight: 400; }
+  /* xGA - dane rywala, stad przygaszony ton, nie czerwien sygnalowa
+     zarezerwowana dla "to jest Widzew" */
+  .xga { color: #9aa1a7; }
   /* slad xG pod liczba - dane, nie ozdoba */
   .xg i {
     position: absolute; left: 4px; right: 4px; bottom: 2px; height: 2px;
@@ -294,7 +295,8 @@ SZABLON = """<!DOCTYPE html>
 
 <p class="legenda-tabeli">
   <span><b>Wynik</b> — wynik meczu</span>
-  <span><b>xG</b> — oczekiwane gole Widzewa, po myślniku <b>xGA</b> rywala</span>
+  <span><b>xG</b> — oczekiwane gole Widzewa</span>
+  <span><b>xGA</b> — oczekiwane gole rywala (Expected Goals Against)</span>
   <span><b>Strz</b> — strzały łącznie</span>
   <span><b>N.br</b> — strzały na bramkę</span>
   <span><b>W.sz</b> — wielkie szanse</span>
@@ -329,6 +331,7 @@ const KOLUMNY = [
   { key: null, label: "Gospodarz – Gość", cls: "match" },
   { key: null, label: "Wynik", cls: "" },
   { key: "widzew_xg", label: "xG", cls: "" },
+  { key: "rywal_xg", label: "xGA", cls: "" },
   { key: "widzew_shots", label: "Strz", cls: "" },
   { key: "widzew_sot", label: "N.br", cls: "" },
   { key: "widzew_bc", label: "W.sz", cls: "" },
@@ -496,9 +499,6 @@ function wiersz(m) {
     ? `<span class="w">${m.gosc}</span>` : m.gosc;
   const xgBar = m.widzew_xg !== null
     ? `<i style="transform:scaleX(${Math.min(m.widzew_xg / 2.8, 1)})"></i>` : "";
-  const xgRywal = m.rywal_xg !== null && m.rywal_xg !== undefined
-    ? `<span class="xg-sep">–</span><span class="xg-rywal" title="xGA">${fmt(m.rywal_xg, 2)}</span>`
-    : "";
   const pusto = v => v === null || v === undefined
     ? '<span class="none">–</span>' : v;
   return `<tr>
@@ -506,7 +506,8 @@ function wiersz(m) {
     <td class="k">${m.kolejka}</td>
     <td class="match">${gospodarz} – ${gosc}</td>
     <td class="score">${m.wynik || "–"}</td>
-    <td class="xg"><span class="xg-widzew">${fmt(m.widzew_xg, 2)}</span>${xgRywal}${xgBar}</td>
+    <td class="xg"><span class="xg-widzew">${fmt(m.widzew_xg, 2)}</span>${xgBar}</td>
+    <td class="xga">${pusto(m.rywal_xg)}</td>
     <td>${pusto(m.widzew_shots)}</td>
     <td>${pusto(m.widzew_sot)}</td>
     <td>${pusto(m.widzew_bc)}</td>
@@ -533,7 +534,7 @@ function tabela(sezon, wiersze) {
   const sr = s.srednie;
   const body = wiersze.map(m => m
     ? wiersz(m)
-    : `<tr class="empty"><td colspan="11"></td></tr>`).join("");
+    : `<tr class="empty"><td colspan="${KOLUMNY.length}"></td></tr>`).join("");
   const bil = sr.bilans ? `${sr.bilans.W}-${sr.bilans.R}-${sr.bilans.P}` : "";
   const naglowki = KOLUMNY.map(c => naglowekKolumny(sezon, c)).join("");
   return `<section>
@@ -544,7 +545,8 @@ function tabela(sezon, wiersze) {
       <tfoot><tr>
         <td class="gutter"></td><td></td>
         <td class="match">Średnia z ${s.liczba_meczow} meczów</td><td></td>
-        <td>${fmt(sr.widzew_xg, 2)}</td><td>${fmt(sr.widzew_shots, 1)}</td>
+        <td>${fmt(sr.widzew_xg, 2)}</td><td class="xga">${fmt(sr.rywal_xg, 2)}</td>
+        <td>${fmt(sr.widzew_shots, 1)}</td>
         <td>${fmt(sr.widzew_sot, 1)}</td><td>${fmt(sr.widzew_bc, 2)}</td>
         <td>${fmt(sr.widzew_pass_pct, 1)}</td><td></td><td></td>
       </tr></tfoot>
