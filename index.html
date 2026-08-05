@@ -275,7 +275,7 @@
 
 <p class="legenda-tabeli">
   <span><b>Wynik</b> — wynik meczu</span>
-  <span><b>xG</b> — oczekiwane gole: Widzew – rywal</span>
+  <span><b>xG</b> — oczekiwane gole Widzewa, po myślniku <b>xGA</b> rywala</span>
   <span><b>Strz</b> — strzały łącznie</span>
   <span><b>N.br</b> — strzały na bramkę</span>
   <span><b>W.sz</b> — wielkie szanse</span>
@@ -478,7 +478,7 @@ function wiersz(m) {
   const xgBar = m.widzew_xg !== null
     ? `<i style="transform:scaleX(${Math.min(m.widzew_xg / 2.8, 1)})"></i>` : "";
   const xgRywal = m.rywal_xg !== null && m.rywal_xg !== undefined
-    ? `<span class="xg-sep">–</span><span class="xg-rywal">${fmt(m.rywal_xg, 2)}</span>`
+    ? `<span class="xg-sep">–</span><span class="xg-rywal" title="xGA">${fmt(m.rywal_xg, 2)}</span>`
     : "";
   const pusto = v => v === null || v === undefined
     ? '<span class="none">–</span>' : v;
