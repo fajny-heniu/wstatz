@@ -102,6 +102,13 @@ SZABLON = """<!DOCTYPE html>
   }
   .metric .delta { font-family: var(--data); font-size: 12px; }
   .up { color: #1c6b3a; } .down { color: #9a2b2b; } .flat { color: var(--muted); }
+  /* .metric .row .val ma wyzszy priorytet (3 klasy w lancuchu) niz samo .up/.down -
+     bez tych regul znak nadwyzki goli nigdy by sie nie pokolorowal */
+  .metric .row.now .val.up { color: var(--win); }
+  .metric .row.now .val.down { color: var(--loss); }
+  .metric .row.now .val.flat { color: var(--muted); }
+  .metric .row.was .val.up { color: var(--win); }
+  .metric .row.was .val.down { color: var(--loss); }
 
   .controls { max-width: 1240px; margin: 0 auto 14px; display: flex;
     flex-wrap: wrap; gap: 10px; align-items: center; }
@@ -181,15 +188,27 @@ SZABLON = """<!DOCTYPE html>
   }
   .chart h3 span { float: right; opacity: .75; font-family: var(--data); letter-spacing: 0; }
   .chart .wrap { padding: 10px 12px 6px; }
+  .chart-tytul {
+    margin: 10px 14px 0; font-size: 11px; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--muted); font-weight: 600;
+  }
   .chart svg { width: 100%; height: auto; display: block; }
   .chart .pusto { padding: 20px 14px; font-size: 12.5px; color: var(--muted); }
   .grid-line { stroke: #e4e1dc; stroke-width: 1; }
   .grid-label { fill: #a8aeb3; font-family: ui-monospace, monospace; font-size: 9px; }
   .seria { fill: none; stroke: var(--signal); stroke-width: 2; }
+  .seria-xg { fill: none; stroke: var(--oxblood); stroke-width: 1.6; stroke-dasharray: 4 3; }
   .kropka { fill: var(--panel); stroke: var(--signal); stroke-width: 1.6; }
   .ostatni { fill: var(--signal); stroke: none; }
   .etykieta { fill: var(--oxblood); font-family: ui-monospace, monospace;
     font-size: 11px; font-weight: 700; }
+  .etykieta-xg { fill: var(--oxblood); opacity: .8; }
+  .chart-legenda {
+    margin: 2px 14px 10px; font-size: 10.5px; color: var(--muted);
+    display: flex; gap: 12px;
+  }
+  .chart-legenda .lg-gole { color: var(--signal); font-weight: 700; }
+  .chart-legenda .lg-xg { color: var(--oxblood); }
   @media (max-width: 860px) {
     .charts { grid-template-columns: 1fr; }
   }
@@ -287,7 +306,7 @@ SZABLON = """<!DOCTYPE html>
 
 <div class="controls">
   <button id="mode" aria-pressed="false">Zestaw kolejka do kolejki</button>
-  <button id="wykresy" aria-pressed="false">Pokaż wykres pozycji</button>
+  <button id="wykresy" aria-pressed="false">Pokaż wykresy</button>
   <p class="hint" id="hint">Najnowsza kolejka u góry. Kliknij nagłówek kolumny (np. xG), aby sortować — osobno dla każdego sezonu.</p>
 </div>
 
@@ -374,6 +393,16 @@ function punktyNaMecz(sezon) {
   const bil = s && s.srednie.bilans;
   if (!bil || !s.liczba_meczow) return null;
   return (bil.W * 3 + bil.R) / s.liczba_meczow;
+}
+
+// Gole strzelone minus suma xG - dodatnia wartosc znaczy, ze Widzew
+// wykanacza sytuacje lepiej niz sugeruje ich jakosc.
+function nadwyzkaGoli(sezon) {
+  const mecze = DANE.sezony[sezon].mecze.filter(m => m.rezultat && m.widzew_xg !== null);
+  if (!mecze.length) return null;
+  const gole = mecze.reduce((s, m) => s + m.widzew_gole, 0);
+  const xg = mecze.reduce((s, m) => s + m.widzew_xg, 0);
+  return gole - xg;
 }
 
 // Ostatnie n rozegranych meczow, od najstarszego do najnowszego (lewo->prawo).
@@ -485,11 +514,29 @@ function compare() {
       ${drugi}</div>`;
   }
 
+  function boxNadwyzka() {
+    const t = nadwyzkaGoli(teraz);
+    const p = wczesniej ? nadwyzkaGoli(wczesniej) : null;
+    function wart(v) {
+      if (v === null || v === undefined) return `<span class="val">–</span>`;
+      const znak = v > 0 ? "+" : "";
+      const klasa = v > 0.05 ? "up" : v < -0.05 ? "down" : "flat";
+      return `<span class="val ${klasa}">${znak}${v.toFixed(2)}</span>`;
+    }
+    const drugi = wczesniej
+      ? `<div class="row was"><span class="sez">${pelny(wczesniej)}</span>${wart(p)}</div>`
+      : "";
+    return `<div class="metric"><b>Gole − xG</b>
+      <div class="row now"><span class="sez">${pelny(teraz)}</span>${wart(t)}</div>
+      ${drugi}</div>`;
+  }
+
   el.innerHTML =
     METRYKI.map(([k, nazwa, d]) =>
       box(nazwa, a["widzew_" + k], b ? b["widzew_" + k] : null, d)).join("") +
     box("Punkty / mecz", punktyNaMecz(teraz),
-        wczesniej ? punktyNaMecz(wczesniej) : null, 2);
+        wczesniej ? punktyNaMecz(wczesniej) : null, 2) +
+    boxNadwyzka();
 }
 
 function wiersz(m) {
@@ -584,12 +631,20 @@ function pozycjeSeria(sezon) {
     .sort((a, b) => a.k - b.k);
 }
 
+// Wspolne wymiary dla wszystkich wykresow sezonowych - ten sam rozmiar
+// i ta sama os X (34 kolejki) niezaleznie od tego, co akurat rysujemy,
+// dzieki czemu wykresy pod soba w jednej kolumnie wygladaja jak jeden zestaw.
+const CHART_W = 520, CHART_H = 220;
+const CHART_PAD = { l: 26, r: 16, t: 16, b: 24 };
+const CHART_MAXK = 34;
+
 function svgWykresPozycji(sezon) {
   const dane = pozycjeSeria(sezon);
   if (!dane.length) {
     return `<div class="pusto">Brak jeszcze danych o pozycji w tabeli dla tego sezonu.</div>`;
   }
-  const W = 520, H = 220, padL = 26, padR = 16, padT = 16, padB = 24;
+  const W = CHART_W, H = CHART_H, padL = CHART_PAD.l, padR = CHART_PAD.r,
+        padT = CHART_PAD.t, padB = CHART_PAD.b;
   const maxK = 34;  // pelny sezon Ekstraklasy - wspolna os dla obu wykresow
   const pozycje = dane.map(d => d.p);
   const minP = 1;
@@ -624,6 +679,105 @@ function svgWykresPozycji(sezon) {
   </svg>`;
 }
 
+// xG per kolejka - jedna linia, ta sama os X co wykres pozycji.
+function xgSeria(sezon) {
+  return DANE.sezony[sezon].mecze
+    .filter(m => m.rezultat && m.widzew_xg !== null)
+    .map(m => ({ k: m.kolejka, xg: m.widzew_xg }))
+    .sort((a, b) => a.k - b.k);
+}
+
+function svgWykresXG(sezon) {
+  const dane = xgSeria(sezon);
+  if (!dane.length) {
+    return `<div class="pusto">Brak jeszcze rozegranych meczów w tym sezonie.</div>`;
+  }
+  const { l: padL, r: padR, t: padT, b: padB } = CHART_PAD;
+  const W = CHART_W, H = CHART_H, maxK = CHART_MAXK;
+  const maxY = Math.max(...dane.map(d => d.xg), 1.5);
+  const krok = maxY > 3 ? 1 : 0.5;
+  const xOf = k => padL + (k - 1) / (maxK - 1) * (W - padL - padR);
+  const yOf = v => padT + (1 - v / maxY) * (H - padT - padB);
+
+  let siatka = "";
+  for (let y = 0; y <= maxY + 0.001; y += krok) {
+    const py = yOf(y);
+    siatka += `<line class="grid-line" x1="${padL}" y1="${py}" x2="${W - padR}" y2="${py}"/>`;
+    siatka += `<text class="grid-label" x="2" y="${py + 3}">${(Math.round(y * 10) / 10)}</text>`;
+  }
+  let osX = "";
+  for (let k = 1; k <= maxK; k += 5) {
+    osX += `<text class="grid-label" x="${xOf(k)}" y="${H - 6}" text-anchor="middle">${k}</text>`;
+  }
+
+  const punkty = dane.map(d => `${xOf(d.k)},${yOf(d.xg)}`).join(" ");
+  const kropki = dane.map((d, i) => {
+    const ostatni = i === dane.length - 1;
+    return `<circle class="${ostatni ? "ostatni" : "kropka"}" cx="${xOf(d.k)}" cy="${yOf(d.xg)}" r="${ostatni ? 4.5 : 3}"/>`;
+  }).join("");
+  const koniec = dane[dane.length - 1];
+  const etykieta = `<text class="etykieta" x="${Math.min(xOf(koniec.k) + 8, W - 30)}" y="${yOf(koniec.xg) + 4}">${koniec.xg.toFixed(2)}</text>`;
+
+  return `<svg viewBox="0 0 ${W} ${H}">
+    ${siatka}${osX}
+    <polyline class="seria" points="${punkty}"/>
+    ${kropki}${etykieta}
+  </svg>`;
+}
+
+// Gole i xG skumulowane narastajaco przez sezon - dwie linie na jednym
+// wykresie. Gdy linia goli jest nad linia xG, Widzew wykanacza sytuacje
+// lepiej niz sugeruje ich jakosc; gdy pod - trwoni sytuacje.
+function goleXgSkumulowane(sezon) {
+  const mecze = DANE.sezony[sezon].mecze
+    .filter(m => m.rezultat && m.widzew_xg !== null)
+    .sort((a, b) => a.kolejka - b.kolejka);
+  let sumaGoli = 0, sumaXg = 0;
+  return mecze.map(m => {
+    sumaGoli += m.widzew_gole;
+    sumaXg += m.widzew_xg;
+    return { k: m.kolejka, gole: sumaGoli, xg: sumaXg };
+  });
+}
+
+function svgWykresGoleXG(sezon) {
+  const dane = goleXgSkumulowane(sezon);
+  if (!dane.length) {
+    return `<div class="pusto">Brak jeszcze rozegranych meczów w tym sezonie.</div>`;
+  }
+  const { l: padL, r: padR, t: padT, b: padB } = CHART_PAD;
+  const W = CHART_W, H = CHART_H, maxK = CHART_MAXK;
+  const maxY = Math.max(...dane.map(d => Math.max(d.gole, d.xg)), 2);
+  const krok = maxY > 20 ? 10 : maxY > 8 ? 5 : 2;
+  const xOf = k => padL + (k - 1) / (maxK - 1) * (W - padL - padR);
+  const yOf = v => padT + (1 - v / maxY) * (H - padT - padB);
+
+  let siatka = "";
+  for (let y = 0; y <= maxY + 0.001; y += krok) {
+    const py = yOf(y);
+    siatka += `<line class="grid-line" x1="${padL}" y1="${py}" x2="${W - padR}" y2="${py}"/>`;
+    siatka += `<text class="grid-label" x="2" y="${py + 3}">${Math.round(y)}</text>`;
+  }
+  let osX = "";
+  for (let k = 1; k <= maxK; k += 5) {
+    osX += `<text class="grid-label" x="${xOf(k)}" y="${H - 6}" text-anchor="middle">${k}</text>`;
+  }
+
+  const linGole = dane.map(d => `${xOf(d.k)},${yOf(d.gole)}`).join(" ");
+  const linXg = dane.map(d => `${xOf(d.k)},${yOf(d.xg)}`).join(" ");
+  const koniec = dane[dane.length - 1];
+  const etGole = `<text class="etykieta" x="${Math.min(xOf(koniec.k) + 8, W - 26)}" y="${yOf(koniec.gole) + 4}">${koniec.gole}</text>`;
+  const etXg = `<text class="etykieta etykieta-xg" x="${Math.min(xOf(koniec.k) + 8, W - 26)}" y="${yOf(koniec.xg) + 4}">${koniec.xg.toFixed(1)}</text>`;
+
+  return `<svg viewBox="0 0 ${W} ${H}">
+    ${siatka}${osX}
+    <polyline class="seria-xg" points="${linXg}"/>
+    <polyline class="seria" points="${linGole}"/>
+    ${etGole}${etXg}
+  </svg>
+  <p class="chart-legenda"><span class="lg-gole">— gole</span><span class="lg-xg">┄ xG</span></p>`;
+}
+
 function renderCharts() {
   const el = document.getElementById("charts");
   el.innerHTML = sezony.map(s => {
@@ -631,7 +785,12 @@ function renderCharts() {
     const info = ost ? `${ost.p}. po k.${ost.k}` : "brak danych";
     return `<div class="chart">
       <h3>${pelny(s)}<span>${info}</span></h3>
+      <p class="chart-tytul">Pozycja w tabeli</p>
       <div class="wrap">${svgWykresPozycji(s)}</div>
+      <p class="chart-tytul">xG per kolejka</p>
+      <div class="wrap">${svgWykresXG(s)}</div>
+      <p class="chart-tytul">Gole vs xG (skumulowane)</p>
+      <div class="wrap">${svgWykresGoleXG(s)}</div>
     </div>`;
   }).join("");
 }
@@ -652,12 +811,12 @@ document.getElementById("wykresy").addEventListener("click", e => {
   const otwarty = !panel.hasAttribute("hidden");
   if (otwarty) {
     panel.setAttribute("hidden", "");
-    e.currentTarget.textContent = "Pokaż wykres pozycji";
+    e.currentTarget.textContent = "Pokaż wykresy";
     e.currentTarget.setAttribute("aria-pressed", "false");
   } else {
     renderCharts();
     panel.removeAttribute("hidden");
-    e.currentTarget.textContent = "Ukryj wykres pozycji";
+    e.currentTarget.textContent = "Ukryj wykresy";
     e.currentTarget.setAttribute("aria-pressed", "true");
   }
 });
