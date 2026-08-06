@@ -262,6 +262,30 @@ SZABLON = """<!DOCTYPE html>
   .k { color: var(--muted); width: 26px; }
   .match { text-align: left; font-family: var(--label); font-size: 12.5px; white-space: normal; }
   .match .w { font-weight: 700; color: var(--oxblood); }
+  .match { cursor: pointer; }
+  .match:hover { text-decoration: underline; text-decoration-color: var(--line); }
+  .h2h-toggle {
+    display: inline-block; width: 12px; color: var(--muted);
+    font-size: 10px; margin-right: 2px;
+  }
+
+  .h2h-panel td {
+    background: #f2efe9; padding: 10px 16px 14px 40px;
+    border-bottom: 1px solid var(--line); white-space: normal;
+  }
+  .h2h-tytul {
+    font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--muted); font-weight: 600; margin-bottom: 7px;
+  }
+  .h2h-brak { font-size: 12px; color: var(--muted); font-style: italic; margin: 0; }
+  .h2h-lista { display: flex; flex-direction: column; gap: 5px; }
+  .h2h-linia { display: flex; align-items: baseline; gap: 9px; font-size: 12.5px; }
+  .h2h-linia .badge { flex: none; }
+  .h2h-sezon {
+    font-family: var(--data); color: var(--muted); flex: none; width: 82px;
+  }
+  .h2h-mecz { flex: 1 1 auto; font-family: var(--label); }
+  .h2h-wynik { font-family: var(--data); font-weight: 700; flex: none; }
   .score { font-weight: 700; }
   .xg { position: relative; }
   .xg-widzew { color: var(--signal); font-weight: 700; }
@@ -341,6 +365,19 @@ const sezony = Object.keys(DANE.sezony).sort().reverse();  // biezacy pierwszy
 const [teraz, wczesniej] = sezony;
 let alignByRound = false;
 const sortState = {};  // { "2026/27": {key:"widzew_xg", dir:"asc"} } - per sezon niezaleznie
+const h2hOtwarte = new Set();  // zbior fixture_id z rozwinietym panelem H2H
+
+// Historia z danym rywalem, przeszukujaca WSZYSTKIE sezony w DANE - nie tylko
+// dwa obecne. Dziala bez zmian, gdy za rok/dwa przybedzie kolejny sezon.
+function h2hDlaMeczu(mecz) {
+  const rywal = mecz.rywal_nazwa;
+  return sezony
+    .flatMap(s => DANE.sezony[s].mecze.map(m => ({ ...m, __sezon: s })))
+    .filter(m => m.rywal_nazwa === rywal && m.fixture_id !== mecz.fixture_id)
+    .sort((a, b) => a.__sezon === b.__sezon
+      ? b.kolejka - a.kolejka
+      : b.__sezon.localeCompare(a.__sezon));
+}
 
 // Definicja kolumn tabeli w jednym miejscu - naglowek, klasa, klucz do sortowania.
 // key===null oznacza kolumne nieklikalna (rynsztok, przeciwnik, wynik meczu).
@@ -548,10 +585,12 @@ function wiersz(m) {
     ? `<i style="transform:scaleX(${Math.min(m.widzew_xg / 2.8, 1)})"></i>` : "";
   const pusto = v => v === null || v === undefined
     ? '<span class="none">–</span>' : v;
+  const otwarty = h2hOtwarte.has(m.fixture_id);
+  const strzalkaH2H = `<span class="h2h-toggle">${otwarty ? "▾" : "▸"}</span>`;
   return `<tr>
     <td class="gutter"><span class="tick ${m.rezultat || ""}" title="${m.rezultat || ""}"></span></td>
     <td class="k">${m.kolejka}</td>
-    <td class="match">${gospodarz} – ${gosc}</td>
+    <td class="match" data-fixture="${m.fixture_id}" title="Historia z tym rywalem">${strzalkaH2H}${gospodarz} – ${gosc}</td>
     <td class="score">${m.wynik || "–"}</td>
     <td class="xg"><span class="xg-widzew">${fmt(m.widzew_xg, 2)}</span>${xgBar}</td>
     <td class="xga">${pusto(m.rywal_xg)}</td>
@@ -561,7 +600,30 @@ function wiersz(m) {
     <td>${pusto(m.widzew_pass_pct)}</td>
     <td>${pusto(m.punkty_do)}</td>
     <td>${pusto(m.pozycja)}</td>
-  </tr>`;
+  </tr>${otwarty ? wierszH2H(m) : ""}`;
+}
+
+function wierszH2H(mecz) {
+  const historia = h2hDlaMeczu(mecz);
+  const kolspan = KOLUMNY.length;
+  let wnetrze;
+  if (!historia.length) {
+    const listaSezonow = sezony.map(pelny).join(", ");
+    wnetrze = `<p class="h2h-brak">Brak innych spotkań z ${mecz.rywal_nazwa}
+      w zebranych danych (sezony: ${listaSezonow}).</p>`;
+  } else {
+    wnetrze = `<div class="h2h-lista">` + historia.map(h => `
+      <div class="h2h-linia">
+        <span class="badge ${h.rezultat}">${h.rezultat}</span>
+        <span class="h2h-sezon">${pelny(h.__sezon)} k${h.kolejka}</span>
+        <span class="h2h-mecz">${h.gospodarz} – ${h.gosc}</span>
+        <span class="h2h-wynik">${h.wynik || "–"}</span>
+      </div>`).join("") + `</div>`;
+  }
+  return `<tr class="h2h-panel"><td colspan="${kolspan}">
+    <div class="h2h-tytul">Historia z ${mecz.rywal_nazwa}</div>
+    ${wnetrze}
+  </td></tr>`;
 }
 
 function naglowekKolumny(sezon, col) {
@@ -823,17 +885,27 @@ document.getElementById("wykresy").addEventListener("click", e => {
 
 document.getElementById("seasons").addEventListener("click", e => {
   const th = e.target.closest("th[data-key]");
-  if (!th || alignByRound) return;  // w trybie zestawienia sortowanie wylaczone
-  const sezon = th.dataset.sezon, key = th.dataset.key;
-  const obecny = sortState[sezon];
-  if (!obecny || obecny.key !== key) {
-    sortState[sezon] = { key, dir: "asc" };
-  } else if (obecny.dir === "asc") {
-    sortState[sezon] = { key, dir: "desc" };
-  } else {
-    delete sortState[sezon];  // trzeci klik - powrot do najnowszej kolejki na gorze
+  if (th) {
+    if (alignByRound) return;  // w trybie zestawienia sortowanie wylaczone
+    const sezon = th.dataset.sezon, key = th.dataset.key;
+    const obecny = sortState[sezon];
+    if (!obecny || obecny.key !== key) {
+      sortState[sezon] = { key, dir: "asc" };
+    } else if (obecny.dir === "asc") {
+      sortState[sezon] = { key, dir: "desc" };
+    } else {
+      delete sortState[sezon];  // trzeci klik - powrot do najnowszej kolejki na gorze
+    }
+    render();
+    return;
   }
-  render();
+
+  const td = e.target.closest("td.match[data-fixture]");
+  if (td) {
+    const fid = td.dataset.fixture;
+    if (h2hOtwarte.has(fid)) h2hOtwarte.delete(fid); else h2hOtwarte.add(fid);
+    render();
+  }
 });
 
 naglowek();
