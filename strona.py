@@ -367,12 +367,24 @@ let alignByRound = false;
 const sortState = {};  // { "2026/27": {key:"widzew_xg", dir:"asc"} } - per sezon niezaleznie
 const h2hOtwarte = new Set();  // zbior fixture_id z rozwinietym panelem H2H
 
-// Historia z danym rywalem, przeszukujaca WSZYSTKIE sezony w DANE - nie tylko
-// dwa obecne. Dziala bez zmian, gdy za rok/dwa przybedzie kolejny sezon.
+// Historia z danym rywalem, przeszukujaca WSZYSTKIE sezony w DANE (aktywne)
+// PLUS archiwum (jesli obecne) - archiwum ma tylko wyniki, bez statystyk,
+// ale do H2H to wystarczy. Dziala bez zmian, gdy przybedzie kolejny sezon
+// aktywny albo kolejny plik archiwalny.
+function nazwySezonowDoH2H() {
+  const zArchiwum = DANE.archiwum ? Object.keys(DANE.archiwum) : [];
+  return [...sezony, ...zArchiwum];
+}
+
 function h2hDlaMeczu(mecz) {
   const rywal = mecz.rywal_nazwa;
-  return sezony
-    .flatMap(s => DANE.sezony[s].mecze.map(m => ({ ...m, __sezon: s })))
+  const zAktywnych = sezony
+    .flatMap(s => DANE.sezony[s].mecze.map(m => ({ ...m, __sezon: s })));
+  const zArchiwum = DANE.archiwum
+    ? Object.keys(DANE.archiwum)
+        .flatMap(s => DANE.archiwum[s].mecze.map(m => ({ ...m, __sezon: s })))
+    : [];
+  return [...zAktywnych, ...zArchiwum]
     .filter(m => m.rywal_nazwa === rywal && m.fixture_id !== mecz.fixture_id)
     .sort((a, b) => a.__sezon === b.__sezon
       ? b.kolejka - a.kolejka
@@ -608,7 +620,7 @@ function wierszH2H(mecz) {
   const kolspan = KOLUMNY.length;
   let wnetrze;
   if (!historia.length) {
-    const listaSezonow = sezony.map(pelny).join(", ");
+    const listaSezonow = nazwySezonowDoH2H().map(pelny).join(", ");
     wnetrze = `<p class="h2h-brak">Brak innych spotkań z ${mecz.rywal_nazwa}
       w zebranych danych (sezony: ${listaSezonow}).</p>`;
   } else {
