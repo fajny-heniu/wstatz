@@ -1,0 +1,35 @@
+season,round,date,competition,venue,home_team,away_team,score_ht,score_ft,xg_home,xg_away,shots_home,shots_away,sot_home,sot_away,bc_home,bc_away,passes_home,passes_away,passes_acc_home,passes_acc_away,pass_pct_home,pass_pct_away,poss_home,poss_away,position,fixture_id
+2024/25,34,2025-05-24,Ekstraklasa,A,Raków Częstochowa,Widzew Łódź,,2:1,,,,,,,,,,,,,,,,,,1203255
+2024/25,33,2025-05-19,Ekstraklasa,H,Widzew Łódź,Puszcza Niepołomice,,2:0,,,,,,,,,,,,,,,,,,1203245
+2024/25,32,2025-05-10,Ekstraklasa,A,Zaglebie Lubin,Widzew Łódź,,2:1,,,,,,,,,,,,,,,,,,1203231
+2024/25,31,2025-05-15,Ekstraklasa,H,Widzew Łódź,Legia Warszawa,,0:2,,,,,,,,,,,,,,,,,,1203227
+2024/25,30,2025-04-27,Ekstraklasa,A,Gornik Zabrze,Widzew Łódź,,0:0,,,,,,,,,,,,,,,,,,1203212
+2024/25,29,2025-04-19,Ekstraklasa,H,Widzew Łódź,Motor Lublin,,1:2,,,,,,,,,,,,,,,,,,1203209
+2024/25,28,2025-04-11,Ekstraklasa,A,Korona Kielce,Widzew Łódź,,2:1,,,,,,,,,,,,,,,,,,1203196
+2024/25,27,2025-04-04,Ekstraklasa,H,Widzew Łódź,Lechia Gdansk,,2:0,,,,,,,,,,,,,,,,,,1203191
+2024/25,26,2025-03-28,Ekstraklasa,A,Piast Gliwice,Widzew Łódź,,0:2,,,,,,,,,,,,,,,,,,1203182
+2024/25,25,2025-03-15,Ekstraklasa,H,Widzew Łódź,GKS Katowice,,1:0,,,,,,,,,,,,,,,,,,1203174
+2024/25,24,2025-03-09,Ekstraklasa,H,Widzew Łódź,Jagiellonia,,0:1,,,,,,,,,,,,,,,,,,1203164
+2024/25,23,2025-02-28,Ekstraklasa,A,Radomiak Radom,Widzew Łódź,,1:1,,,,,,,,,,,,,,,,,,1203154
+2024/25,22,2025-02-22,Ekstraklasa,H,Widzew Łódź,Pogon Szczecin,,0:4,,,,,,,,,,,,,,,,,,1203147
+2024/25,21,2025-02-15,Ekstraklasa,A,Slask Wroclaw,Widzew Łódź,,3:0,,,,,,,,,,,,,,,,,,1203138
+2024/25,20,2025-02-09,Ekstraklasa,H,Widzew Łódź,Cracovia Krakow,,1:1,,,,,,,,,,,,,,,,,,1203129
+2024/25,19,2025-01-31,Ekstraklasa,A,Lech Poznan,Widzew Łódź,,4:1,,,,,,,,,,,,,,,,,,1203116
+2024/25,18,2024-12-07,Ekstraklasa,H,Widzew Łódź,Stal Mielec,,2:1,,,,,,,,,,,,,,,,,,1203111
+2024/25,17,2024-11-30,Ekstraklasa,H,Widzew Łódź,Raków Częstochowa,,2:3,,,,,,,,,,,,,,,,,,1203101
+2024/25,16,2024-11-25,Ekstraklasa,A,Puszcza Niepołomice,Widzew Łódź,,2:0,,,,,,,,,,,,,,,,,,1203091
+2024/25,15,2024-11-09,Ekstraklasa,H,Widzew Łódź,Zaglebie Lubin,,2:0,,,,,,,,,,,,,,,,,,1203083
+2024/25,14,2024-11-03,Ekstraklasa,A,Legia Warszawa,Widzew Łódź,,2:1,,,,,,,,,,,,,,,,,,1203071
+2024/25,13,2024-10-27,Ekstraklasa,H,Widzew Łódź,Gornik Zabrze,,0:2,,,,,,,,,,,,,,,,,,1203065
+2024/25,12,2024-10-19,Ekstraklasa,A,Motor Lublin,Widzew Łódź,,3:4,,,,,,,,,,,,,,,,,,1203055
+2024/25,11,2024-10-04,Ekstraklasa,H,Widzew Łódź,Korona Kielce,,0:1,,,,,,,,,,,,,,,,,,1203047
+2024/25,10,2024-09-27,Ekstraklasa,A,Lechia Gdansk,Widzew Łódź,,1:1,,,,,,,,,,,,,,,,,,1203035
+2024/25,9,2024-09-21,Ekstraklasa,H,Widzew Łódź,Piast Gliwice,,1:0,,,,,,,,,,,,,,,,,,1203030
+2024/25,8,2024-09-13,Ekstraklasa,A,GKS Katowice,Widzew Łódź,,2:2,,,,,,,,,,,,,,,,,,1203014
+2024/25,7,2024-09-01,Ekstraklasa,A,Jagiellonia,Widzew Łódź,,1:0,,,,,,,,,,,,,,,,,,1203005
+2024/25,6,2024-08-23,Ekstraklasa,H,Widzew Łódź,Radomiak Radom,,3:2,,,,,,,,,,,,,,,,,,1203002
+2024/25,5,2024-08-17,Ekstraklasa,A,Pogon Szczecin,Widzew Łódź,,2:0,,,,,,,,,,,,,,,,,,1202991
+2024/25,4,2024-08-11,Ekstraklasa,H,Widzew Łódź,Slask Wroclaw,,0:0,,,,,,,,,,,,,,,,,,1202985
+2024/25,3,2024-08-05,Ekstraklasa,A,Cracovia Krakow,Widzew Łódź,,1:3,,,,,,,,,,,,,,,,,,1202968
+2024/25,2,2024-07-27,Ekstraklasa,H,Widzew Łódź,Lech Poznan,,2:1,,,,,,,,,,,,,,,,,,1202967
+2024/25,1,2024-07-22,Ekstraklasa,A,Stal Mielec,Widzew Łódź,,1:1,,,,,,,,,,,,,,,,,,1202957
