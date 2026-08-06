@@ -167,6 +167,30 @@ def waliduj(r, sezon):
     return ostrz
 
 
+def wiersz_do_meczu(r):
+    """Jeden wiersz CSV -> slownik meczu. Wspolne dla sezonow aktywnych
+    i archiwum - archiwum ma po prostu wiecej pustych pol (brak statystyk)."""
+    m = {
+        "kolejka": int(r["round"]) if r.get("round") else None,
+        "data": r.get("date"),
+        "rozgrywki": r.get("competition"),
+        "gospodarz": r.get("home_team"),
+        "gosc": r.get("away_team"),
+        "wynik": r.get("score_ft") or None,
+        "wynik_ht": r.get("score_ht") or None,
+        "fixture_id": r.get("fixture_id") or None,
+    }
+    for strona in ("home", "away"):
+        for met in METRYKI:
+            m[f"{met}_{strona}"] = num(r.get(f"{met}_{strona}"))
+    m.update(perspektywa_widzewa(r))
+    # pozycja w tabeli - dane zewnetrzne, nie da sie policzyc
+    # z meczow samego Widzewa; puste pole to brak, nie zero
+    poz = r.get("position")
+    m["pozycja"] = int(poz) if poz not in (None, "") else None
+    return m
+
+
 def main():
     pliki = sys.argv[1:] or sorted(glob.glob(str(HERE / "[0-9][0-9][0-9][0-9]-[0-9][0-9].csv")))
     if not pliki:
@@ -185,25 +209,7 @@ def main():
         mecze = []
         for r in wiersze:
             wszystkie_ostrz += waliduj(r, nazwa)
-            m = {
-                "kolejka": int(r["round"]) if r.get("round") else None,
-                "data": r.get("date"),
-                "rozgrywki": r.get("competition"),
-                "gospodarz": r.get("home_team"),
-                "gosc": r.get("away_team"),
-                "wynik": r.get("score_ft") or None,
-                "wynik_ht": r.get("score_ht") or None,
-                "fixture_id": r.get("fixture_id") or None,
-            }
-            for strona in ("home", "away"):
-                for met in METRYKI:
-                    m[f"{met}_{strona}"] = num(r.get(f"{met}_{strona}"))
-            m.update(perspektywa_widzewa(r))
-            # pozycja w tabeli - dane zewnetrzne, nie da sie policzyc
-            # z meczow samego Widzewa; puste pole to brak, nie zero
-            poz = r.get("position")
-            m["pozycja"] = int(poz) if poz not in (None, "") else None
-            mecze.append(m)
+            mecze.append(wiersz_do_meczu(r))
 
         mecze.sort(key=lambda x: x["kolejka"] or 0, reverse=True)
         wszystkie_ostrz += [f"{nazwa}: {o}" for o in narastajaco(mecze)]
@@ -216,10 +222,29 @@ def main():
         }
         print(f"{nazwa}: {len(mecze)} meczow")
 
+    # Archiwum - lekkie sezony (tylko wyniki, bez statystyk) sluzace
+    # WYLACZNIE do historii H2H po kliknieciu na mecz. Nie wchodzi do
+    # `sezony` powyzej, bo pasek srednich/dom-wyjazd/wykresy/tabele
+    # zalozyly dokladnie dwie kolumny (biezacy + poprzedni) - dopisanie
+    # archiwalnych sezonow tam rozjechaloby caly layout. Archiwum zyje
+    # w osobnym kluczu, ktory tylko funkcja H2H przeszukuje.
+    archiwum = {}
+    for sciezka in sorted(glob.glob(str(HERE / "archiwum-*.csv"))):
+        with open(sciezka, newline="", encoding="utf-8") as f:
+            wiersze = list(csv.DictReader(f))
+        if not wiersze:
+            continue
+        nazwa = wiersze[0].get("season") or pathlib.Path(sciezka).stem
+        mecze = [wiersz_do_meczu(r) for r in wiersze]
+        mecze.sort(key=lambda x: x["kolejka"] or 0, reverse=True)
+        archiwum[nazwa] = {"mecze": mecze, "liczba_meczow": len(mecze)}
+        print(f"[archiwum] {nazwa}: {len(mecze)} meczow (tylko H2H, bez pelnej analizy)")
+
     out = {
         "druzyna": DRUZYNA,
         "metryki": METRYKI,
         "sezony": sezony,
+        "archiwum": archiwum,
     }
     (HERE / "data.json").write_text(
         json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8"
