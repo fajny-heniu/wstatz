@@ -125,6 +125,11 @@ SZABLON = """<!DOCTYPE html>
     letter-spacing: .02em;
   }
   .legenda-tabeli span { margin-right: 14px; white-space: nowrap; }
+  .hint-h2h {
+    max-width: 1240px; margin: 0 auto 14px; font-size: 12px;
+    color: var(--muted); padding: 0 2px;
+  }
+  .hint-h2h .h2h-toggle { color: var(--muted); }
 
   /* forma z 5 ostatnich meczow */
   .forma {
@@ -347,6 +352,8 @@ SZABLON = """<!DOCTYPE html>
   <span><b>Pkt</b> — punkty ligowe narastająco</span>
   <span><b>Poz</b> — miejsce w tabeli po tej kolejce</span>
 </p>
+
+<p class="hint-h2h"><span class="h2h-toggle">▸</span> Kliknij na mecz (nazwy drużyn), aby zobaczyć historię spotkań z tym rywalem.</p>
 
 <div class="seasons" id="seasons"></div>
 
