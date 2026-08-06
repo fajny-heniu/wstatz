@@ -1,0 +1,35 @@
+season,round,date,competition,venue,home_team,away_team,score_ht,score_ft,xg_home,xg_away,shots_home,shots_away,sot_home,sot_away,bc_home,bc_away,passes_home,passes_away,passes_acc_home,passes_acc_away,pass_pct_home,pass_pct_away,poss_home,poss_away,position,fixture_id
+2022/23,34,2023-05-27,Ekstraklasa,H,Widzew Łódź,Korona Kielce,,0:3,,,,,,,,,,,,,,,,,,865386
+2022/23,33,2023-05-21,Ekstraklasa,A,Radomiak Radom,Widzew Łódź,,3:1,,,,,,,,,,,,,,,,,,865374
+2022/23,32,2023-05-13,Ekstraklasa,H,Widzew Łódź,Gornik Zabrze,,2:3,,,,,,,,,,,,,,,,,,865367
+2022/23,31,2023-05-08,Ekstraklasa,A,Miedz Legnica,Widzew Łódź,,0:1,,,,,,,,,,,,,,,,,,865355
+2022/23,30,2023-04-29,Ekstraklasa,A,Zaglebie Lubin,Widzew Łódź,,2:0,,,,,,,,,,,,,,,,,,865345
+2022/23,29,2023-04-23,Ekstraklasa,H,Widzew Łódź,Piast Gliwice,,2:3,,,,,,,,,,,,,,,,,,865340
+2022/23,28,2023-04-16,Ekstraklasa,A,Raków Częstochowa,Widzew Łódź,,2:0,,,,,,,,,,,,,,,,,,865330
+2022/23,27,2023-04-08,Ekstraklasa,H,Widzew Łódź,Stal Mielec,,0:2,,,,,,,,,,,,,,,,,,865321
+2022/23,26,2023-04-02,Ekstraklasa,A,Cracovia Krakow,Widzew Łódź,,1:1,,,,,,,,,,,,,,,,,,865306
+2022/23,25,2023-03-19,Ekstraklasa,H,Widzew Łódź,Lech Poznan,,1:2,,,,,,,,,,,,,,,,,,865304
+2022/23,24,2023-03-13,Ekstraklasa,A,Wisla Plock,Widzew Łódź,,1:1,,,,,,,,,,,,,,,,,,865296
+2022/23,23,2023-03-04,Ekstraklasa,H,Widzew Łódź,Warta Poznań,,0:2,,,,,,,,,,,,,,,,,,865287
+2022/23,22,2023-02-24,Ekstraklasa,A,Legia Warszawa,Widzew Łódź,,2:2,,,,,,,,,,,,,,,,,,865274
+2022/23,21,2023-02-17,Ekstraklasa,H,Widzew Łódź,Slask Wroclaw,,1:0,,,,,,,,,,,,,,,,,,865269
+2022/23,20,2023-02-10,Ekstraklasa,A,Lechia Gdansk,Widzew Łódź,,0:0,,,,,,,,,,,,,,,,,,865254
+2022/23,19,2023-02-03,Ekstraklasa,H,Widzew Łódź,Jagiellonia,,1:1,,,,,,,,,,,,,,,,,,865250
+2022/23,18,2023-01-28,Ekstraklasa,H,Widzew Łódź,Pogon Szczecin,,3:3,,,,,,,,,,,,,,,,,,865241
+2022/23,17,2022-11-12,Ekstraklasa,A,Korona Kielce,Widzew Łódź,,0:1,,,,,,,,,,,,,,,,,,865227
+2022/23,16,2022-11-06,Ekstraklasa,H,Widzew Łódź,Radomiak Radom,,1:3,,,,,,,,,,,,,,,,,,865224
+2022/23,15,2022-10-28,Ekstraklasa,A,Gornik Zabrze,Widzew Łódź,,3:0,,,,,,,,,,,,,,,,,,865213
+2022/23,14,2022-10-21,Ekstraklasa,H,Widzew Łódź,Miedz Legnica,,1:0,,,,,,,,,,,,,,,,,,865205
+2022/23,13,2022-10-16,Ekstraklasa,H,Widzew Łódź,Zaglebie Lubin,,3:0,,,,,,,,,,,,,,,,,,865196
+2022/23,12,2022-10-10,Ekstraklasa,A,Piast Gliwice,Widzew Łódź,,1:2,,,,,,,,,,,,,,,,,,865181
+2022/23,11,2022-10-02,Ekstraklasa,H,Widzew Łódź,Raków Częstochowa,,0:0,,,,,,,,,,,,,,,,,,865177
+2022/23,10,2022-09-17,Ekstraklasa,A,Stal Mielec,Widzew Łódź,,0:3,,,,,,,,,,,,,,,,,,865169
+2022/23,9,2022-09-09,Ekstraklasa,H,Widzew Łódź,Cracovia Krakow,,2:0,,,,,,,,,,,,,,,,,,865160
+2022/23,8,2022-09-04,Ekstraklasa,A,Lech Poznan,Widzew Łódź,,2:0,,,,,,,,,,,,,,,,,,865148
+2022/23,7,2022-08-27,Ekstraklasa,H,Widzew Łódź,Wisla Plock,,2:1,,,,,,,,,,,,,,,,,,865142
+2022/23,6,2022-08-20,Ekstraklasa,A,Warta Poznań,Widzew Łódź,,0:1,,,,,,,,,,,,,,,,,,865132
+2022/23,5,2022-08-12,Ekstraklasa,H,Widzew Łódź,Legia Warszawa,,1:2,,,,,,,,,,,,,,,,,,865125
+2022/23,4,2022-08-06,Ekstraklasa,A,Slask Wroclaw,Widzew Łódź,,0:0,,,,,,,,,,,,,,,,,,865116
+2022/23,3,2022-07-31,Ekstraklasa,H,Widzew Łódź,Lechia Gdansk,,2:3,,,,,,,,,,,,,,,,,,865107
+2022/23,2,2022-07-22,Ekstraklasa,A,Jagiellonia,Widzew Łódź,,0:2,,,,,,,,,,,,,,,,,,865092
+2022/23,1,2022-07-17,Ekstraklasa,A,Pogon Szczecin,Widzew Łódź,,2:1,,,,,,,,,,,,,,,,,,865086
