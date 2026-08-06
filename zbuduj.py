@@ -193,6 +193,7 @@ def main():
                 "gosc": r.get("away_team"),
                 "wynik": r.get("score_ft") or None,
                 "wynik_ht": r.get("score_ht") or None,
+                "fixture_id": r.get("fixture_id") or None,
             }
             for strona in ("home", "away"):
                 for met in METRYKI:
