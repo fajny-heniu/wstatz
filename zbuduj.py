@@ -124,11 +124,17 @@ def narastajaco(mecze):
 
     w = r = p = 0
     for m in sorted(mecze, key=lambda x: x["kolejka"]):
-        if m.get("rezultat") == "W":
+        if m.get("rezultat") is None:
+            # mecz jeszcze nierozegrany (zapowiedz) - bilans/punkty "po tej
+            # kolejce" nie istnieja, dopoki mecz sie nie odbedzie. Puste
+            # pole, nie powtorzony stan z poprzedniej kolejki.
+            m["bilans_do"] = m["punkty_do"] = None
+            continue
+        if m["rezultat"] == "W":
             w += 1
-        elif m.get("rezultat") == "R":
+        elif m["rezultat"] == "R":
             r += 1
-        elif m.get("rezultat") == "P":
+        elif m["rezultat"] == "P":
             p += 1
         m["bilans_do"] = f"{w}-{r}-{p}"
         m["punkty_do"] = w * 3 + r
