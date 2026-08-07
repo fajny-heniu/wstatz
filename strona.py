@@ -283,11 +283,14 @@ SZABLON = """<!DOCTYPE html>
     border-bottom: 1px solid var(--line); white-space: normal;
   }
   .h2h-tytul {
-    font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+    display: flex; justify-content: space-between; align-items: baseline;
+    gap: 14px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
     color: var(--muted); font-weight: 600; margin-bottom: 7px;
   }
+  .h2h-tytul .h2h-nazwa { min-width: 0; overflow-wrap: break-word; }
   .h2h-bilans {
-    float: right; font-family: var(--data); letter-spacing: 0;
+    flex: none; white-space: nowrap; font-size: 12px;
+    font-family: var(--data); letter-spacing: 0;
     text-transform: none; color: var(--oxblood); font-weight: 700;
   }
   .h2h-brak { font-size: 12px; color: var(--muted); font-style: italic; margin: 0; }
@@ -662,7 +665,7 @@ function wierszH2H(mecz) {
       </div>`).join("") + `</div>`;
   }
   return `<tr class="h2h-panel"><td colspan="${kolspan}">
-    <div class="h2h-tytul">Historia z ${mecz.rywal_nazwa}${bilansHtml}</div>
+    <div class="h2h-tytul"><span class="h2h-nazwa">Historia z ${mecz.rywal_nazwa}</span>${bilansHtml}</div>
     ${wnetrze}
   </td></tr>`;
 }
