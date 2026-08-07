@@ -303,6 +303,10 @@ SZABLON = """<!DOCTYPE html>
   .h2h-mecz { flex: 1 1 auto; font-family: var(--label); }
   .h2h-wynik { font-family: var(--data); font-weight: 700; flex: none; }
   .score { font-weight: 700; }
+  .wkrotce {
+    font-weight: 500; font-style: italic; font-size: 11px;
+    color: var(--muted); font-family: var(--label);
+  }
   .xg { position: relative; }
   .xg-widzew { color: var(--signal); font-weight: 700; }
   /* xGA - dane rywala, stad przygaszony ton, nie czerwien sygnalowa
@@ -623,8 +627,10 @@ function wiersz(m) {
     <td class="gutter"><span class="tick ${m.rezultat || ""}" title="${m.rezultat || ""}"></span></td>
     <td class="k">${m.kolejka}</td>
     <td class="match" data-fixture="${m.fixture_id}" title="Historia z tym rywalem">${strzalkaH2H}${gospodarz} – ${gosc}</td>
-    <td class="score">${m.wynik || "–"}</td>
-    <td class="xg"><span class="xg-widzew">${fmt(m.widzew_xg, 2)}</span>${xgBar}</td>
+    <td class="score">${m.wynik || '<span class="wkrotce">wkrótce</span>'}</td>
+    <td class="xg">${m.widzew_xg !== null
+      ? `<span class="xg-widzew">${fmt(m.widzew_xg, 2)}</span>${xgBar}`
+      : '<span class="none">–</span>'}</td>
     <td class="xga">${pusto(m.rywal_xg)}</td>
     <td>${pusto(m.widzew_shots)}</td>
     <td>${pusto(m.widzew_sot)}</td>
