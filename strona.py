@@ -286,6 +286,10 @@ SZABLON = """<!DOCTYPE html>
     font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
     color: var(--muted); font-weight: 600; margin-bottom: 7px;
   }
+  .h2h-bilans {
+    float: right; font-family: var(--data); letter-spacing: 0;
+    text-transform: none; color: var(--oxblood); font-weight: 700;
+  }
   .h2h-brak { font-size: 12px; color: var(--muted); font-style: italic; margin: 0; }
   .h2h-lista { display: flex; flex-direction: column; gap: 5px; }
   .h2h-linia { display: flex; align-items: baseline; gap: 9px; font-size: 12.5px; }
@@ -628,15 +632,27 @@ function wiersz(m) {
   </tr>${otwarty ? wierszH2H(m) : ""}`;
 }
 
+// Bilans W-R-P wliczajac klikniety mecz - "w sumie teraz mamy z nimi X-Y-Z",
+// nie tylko historie sprzed tego meczu.
+function h2hBilans(mecz, historia) {
+  const wszystkie = [...historia, mecz];
+  const w = wszystkie.filter(h => h.rezultat === "W").length;
+  const r = wszystkie.filter(h => h.rezultat === "R").length;
+  const p = wszystkie.filter(h => h.rezultat === "P").length;
+  return { w, r, p, n: wszystkie.length };
+}
+
 function wierszH2H(mecz) {
   const historia = h2hDlaMeczu(mecz);
   const kolspan = KOLUMNY.length;
-  let wnetrze;
+  let wnetrze, bilansHtml = "";
   if (!historia.length) {
     const listaSezonow = nazwySezonowDoH2H().map(pelny).join(", ");
     wnetrze = `<p class="h2h-brak">Brak innych spotkań z ${mecz.rywal_nazwa}
       w zebranych danych (sezony: ${listaSezonow}).</p>`;
   } else {
+    const b = h2hBilans(mecz, historia);
+    bilansHtml = `<span class="h2h-bilans">${b.n} m. · ${b.w}-${b.r}-${b.p}</span>`;
     wnetrze = `<div class="h2h-lista">` + historia.map(h => `
       <div class="h2h-linia">
         <span class="badge ${h.rezultat}">${h.rezultat}</span>
@@ -646,7 +662,7 @@ function wierszH2H(mecz) {
       </div>`).join("") + `</div>`;
   }
   return `<tr class="h2h-panel"><td colspan="${kolspan}">
-    <div class="h2h-tytul">Historia z ${mecz.rywal_nazwa}</div>
+    <div class="h2h-tytul">Historia z ${mecz.rywal_nazwa}${bilansHtml}</div>
     ${wnetrze}
   </td></tr>`;
 }
