@@ -128,9 +128,9 @@ SZABLON = """<!DOCTYPE html>
   .legenda-tabeli span { margin-right: 14px; white-space: nowrap; }
   .hint-h2h {
     max-width: 1240px; margin: 0 auto 14px; font-size: 12px;
-    color: var(--muted); padding: 0 2px;
+    color: #5a6066; font-weight: 700; padding: 0 2px;
   }
-  .hint-h2h .h2h-toggle { color: var(--muted); }
+  .hint-h2h .h2h-toggle { color: var(--muted); font-weight: 700; }
 
   /* forma z 5 ostatnich meczow */
   .forma {
