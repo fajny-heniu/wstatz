@@ -32,6 +32,41 @@ def num(x):
         return None
 
 
+# API-Football zwraca niektore nazwy druzyn bez polskich znakow
+# diakrytycznych albo w innym formacie niz Flashscore (np. z dopiskiem
+# miasta, ktorego Flashscore nie uzywa). Sprawdzone na zywo: "Lech Poznan"
+# (API) i "Lech Poznań" (Flashscore) to dla porownania w JS (===) dwa
+# rozne stringi - bez tej mapy mecze archiwalne z takimi druzynami byly
+# NIEWIDOCZNE dla wyszukiwania H2H, mimo ze istnialy w danych. Nazwy po
+# lewej strone potwierdzone bezposrednio w odpowiedzi API-Football;
+# "Miedz Legnica" nie mielismy jeszcze szansy potwierdzic wprost z
+# Flashscore (ten zespol nie wystapil jeszcze w zebranych sezonach
+# aktywnych) - poprawka wg ogolnej wiedzy, nizszy stopien pewnosci niz
+# reszta mapy.
+ALIASY_NAZW = {
+    "Lech Poznan": "Lech Poznań",
+    "Lechia Gdansk": "Lechia Gdańsk",
+    "Cracovia Krakow": "Cracovia",
+    "Gornik Zabrze": "Górnik Zabrze",
+    "Jagiellonia": "Jagiellonia Białystok",
+    "Slask Wroclaw": "Śląsk Wrocław",
+    "Wisla Plock": "Wisła Płock",
+    "Zaglebie Lubin": "Zagłębie Lubin",
+    "Pogon Szczecin": "Pogoń Szczecin",
+    "Miedz Legnica": "Miedź Legnica",
+}
+
+
+def znormalizuj_nazwy_druzyn(wiersze):
+    """Poprawia home_team/away_team W MIEJSCU, zanim cokolwiek innego
+    (perspektywa_widzewa, wiersz_do_meczu, waliduj) przeczyta te pola -
+    dzieki temu cala reszta kodu widzi juz spojne nazwy, bez potrzeby
+    pamietania o tym w wielu miejscach."""
+    for r in wiersze:
+        r["home_team"] = ALIASY_NAZW.get(r.get("home_team"), r.get("home_team"))
+        r["away_team"] = ALIASY_NAZW.get(r.get("away_team"), r.get("away_team"))
+
+
 def perspektywa_widzewa(r):
     """
     Dokłada pola widzew_* / rywal_* wyliczone z venue.
@@ -204,6 +239,7 @@ def main():
             wiersze = list(csv.DictReader(f))
         if not wiersze:
             continue
+        znormalizuj_nazwy_druzyn(wiersze)
 
         nazwa = wiersze[0].get("season") or pathlib.Path(sciezka).stem
         mecze = []
@@ -234,6 +270,7 @@ def main():
             wiersze = list(csv.DictReader(f))
         if not wiersze:
             continue
+        znormalizuj_nazwy_druzyn(wiersze)
         nazwa = wiersze[0].get("season") or pathlib.Path(sciezka).stem
         mecze = [wiersz_do_meczu(r) for r in wiersze]
         mecze.sort(key=lambda x: x["kolejka"] or 0, reverse=True)
