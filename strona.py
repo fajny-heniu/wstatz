@@ -131,11 +131,6 @@ SZABLON = """<!DOCTYPE html>
     color: var(--muted); padding: 0 2px;
   }
   .hint-h2h .h2h-toggle { color: var(--muted); }
-  .csv-link-dark {
-    color: var(--oxblood); text-decoration: none; margin-left: 10px;
-    border-bottom: 1px dotted var(--line); font-weight: 600;
-  }
-  .csv-link-dark:hover { border-bottom-style: solid; }
 
   /* forma z 5 ostatnich meczow */
   .forma {
@@ -361,8 +356,7 @@ SZABLON = """<!DOCTYPE html>
   <span><b>Poz</b> — miejsce w tabeli po tej kolejce</span>
 </p>
 
-<p class="hint-h2h"><span class="h2h-toggle">▸</span> Kliknij na mecz (nazwy drużyn), aby zobaczyć historię spotkań z tym rywalem.
-  <a class="csv-link-dark" href="https://github.com/fajny-heniu/wstatz" target="_blank" rel="noopener">Dane archiwalne (H2H) na GitHubie ↓</a></p>
+<p class="hint-h2h"><span class="h2h-toggle">▸</span> Kliknij na mecz (nazwy drużyn), aby zobaczyć historię spotkań z tym rywalem.</p>
 
 <div class="seasons" id="seasons"></div>
 
