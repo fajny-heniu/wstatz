@@ -967,7 +967,7 @@ def main():
         sys.exit("BLAD: data.json nie zawiera zadnego sezonu.")
 
     dzis = datetime.date.today()
-    zbudowano = f"{dzis.day} {MIESIACE_PL[dzis.month - 1]} {dzis.year}"
+    zbudowano = f"{dzis.day} {MIESIACE_PL[dzis.month - 1]} {dzis.year} r."
 
     html = SZABLON.replace("__DANE__", json.dumps(dane, ensure_ascii=False))
     html = html.replace("__ZBUDOWANO__", zbudowano)
