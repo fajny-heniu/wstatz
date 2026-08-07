@@ -9,6 +9,7 @@ Dane trafiaja do HTML jako wbudowany JSON, wiec plik dziala samodzielnie -
 mozna go otworzyc dwuklikiem albo wrzucic na hosting bez zadnego serwera.
 """
 
+import datetime
 import json
 import pathlib
 import sys
@@ -130,6 +131,11 @@ SZABLON = """<!DOCTYPE html>
     color: var(--muted); padding: 0 2px;
   }
   .hint-h2h .h2h-toggle { color: var(--muted); }
+  .csv-link-dark {
+    color: var(--oxblood); text-decoration: none; margin-left: 10px;
+    border-bottom: 1px dotted var(--line); font-weight: 600;
+  }
+  .csv-link-dark:hover { border-bottom-style: solid; }
 
   /* forma z 5 ostatnich meczow */
   .forma {
@@ -241,6 +247,8 @@ SZABLON = """<!DOCTYPE html>
     padding: 11px 14px; background: var(--oxblood); color: #fff; font-weight: 500;
   }
   section > h2 span { float: right; opacity: .72; font-family: var(--data); letter-spacing: 0; }
+  .csv-link { color: #fff; opacity: 1; text-decoration: none; border-bottom: 1px dotted rgba(255,255,255,.5); }
+  .csv-link:hover { border-bottom-style: solid; }
   .scroll { overflow-x: auto; }
   table { border-collapse: collapse; width: 100%; font-family: var(--data); font-size: 12.5px; }
   thead th {
@@ -353,7 +361,8 @@ SZABLON = """<!DOCTYPE html>
   <span><b>Poz</b> — miejsce w tabeli po tej kolejce</span>
 </p>
 
-<p class="hint-h2h"><span class="h2h-toggle">▸</span> Kliknij na mecz (nazwy drużyn), aby zobaczyć historię spotkań z tym rywalem.</p>
+<p class="hint-h2h"><span class="h2h-toggle">▸</span> Kliknij na mecz (nazwy drużyn), aby zobaczyć historię spotkań z tym rywalem.
+  <a class="csv-link-dark" href="https://github.com/fajny-heniu/wstatz" target="_blank" rel="noopener">Dane archiwalne (H2H) na GitHubie ↓</a></p>
 
 <div class="seasons" id="seasons"></div>
 
@@ -526,13 +535,15 @@ function renderDomWyjazd() {
   el.innerHTML = sezony.map(kolumna).join("");
 }
 
+const ZBUDOWANO = "__ZBUDOWANO__";
+
 function naglowek() {
   const rozgrywki = DANE.sezony[teraz].mecze[0].rozgrywki || "Ekstraklasa";
   const zestaw = wczesniej
     ? `${pelny(teraz)} v ${pelny(wczesniej)}`
     : pelny(teraz);
   document.getElementById("sub").textContent =
-    `${rozgrywki} ${zestaw} · kolejka po kolejce`;
+    `${rozgrywki} ${zestaw} · kolejka po kolejce · aktualizowano ${ZBUDOWANO}`;
 }
 
 function stopka() {
@@ -657,6 +668,15 @@ function naglowekKolumny(sezon, col) {
     title="Sortuj po ${col.label}">${col.label}${strzalka}</th>`;
 }
 
+const GITHUB_RAW = "https://raw.githubusercontent.com/fajny-heniu/wstatz/main/";
+
+// "2025/26" -> "2025-26.csv" - odwzorowanie nazwy sezonu na nazwe pliku,
+// dokladnie tak jak nazywaja sie pliki w repozytorium.
+function nazwaPlikuCSV(sezon) {
+  const [a, b] = sezon.split("/");
+  return `${a}-${b}.csv`;
+}
+
 function tabela(sezon, wiersze) {
   const s = DANE.sezony[sezon];
   const sr = s.srednie;
@@ -666,7 +686,8 @@ function tabela(sezon, wiersze) {
   const bil = sr.bilans ? `${sr.bilans.W}-${sr.bilans.R}-${sr.bilans.P}` : "";
   const naglowki = KOLUMNY.map(c => naglowekKolumny(sezon, c)).join("");
   return `<section>
-    <h2>${sezon}<span>${s.liczba_meczow} m. · ${bil}</span></h2>
+    <h2>${sezon}<span>${s.liczba_meczow} m. · ${bil} ·
+      <a class="csv-link" href="${GITHUB_RAW}${nazwaPlikuCSV(sezon)}" target="_blank" rel="noopener">CSV ↓</a></span></h2>
     <div class="scroll"><table>
       <thead><tr>${naglowki}</tr></thead>
       <tbody>${body}</tbody>
@@ -939,6 +960,11 @@ render();
 """
 
 
+MIESIACE_PL = ["stycznia", "lutego", "marca", "kwietnia", "maja", "czerwca",
+               "lipca", "sierpnia", "września", "października",
+               "listopada", "grudnia"]
+
+
 def main():
     if not DATA.exists():
         sys.exit("BLAD: brak data.json. Uruchom najpierw: python3 zbuduj.py")
@@ -946,10 +972,14 @@ def main():
     if not dane.get("sezony"):
         sys.exit("BLAD: data.json nie zawiera zadnego sezonu.")
 
+    dzis = datetime.date.today()
+    zbudowano = f"{dzis.day} {MIESIACE_PL[dzis.month - 1]} {dzis.year}"
+
     html = SZABLON.replace("__DANE__", json.dumps(dane, ensure_ascii=False))
+    html = html.replace("__ZBUDOWANO__", zbudowano)
     OUT.write_text(html, encoding="utf-8")
 
-    print(f"Zapisano {OUT.name}  ({len(html) // 1024} kB)")
+    print(f"Zapisano {OUT.name}  ({len(html) // 1024} kB)  [aktualizowano: {zbudowano}]")
     for nazwa, s in sorted(dane["sezony"].items(), reverse=True):
         braki = sum(1 for m in s["mecze"] if m.get("pozycja") is None)
         info = f", bez pozycji: {braki}" if braki else ""
