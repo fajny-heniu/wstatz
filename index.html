@@ -178,6 +178,12 @@
   .chart-tab[aria-pressed="true"] {
     background: var(--oxblood); color: #fff; border-color: var(--oxblood);
   }
+  .chart-wyjasnienie {
+    font-size: 12px; line-height: 1.6; color: var(--muted);
+    margin: 0 0 14px; padding: 8px 10px; background: #f2efe9;
+    border-left: 3px solid var(--oxblood);
+  }
+  .chart-wyjasnienie b { color: #5a6066; font-family: var(--data); }
   .chart-kolumny {
     display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
   }
@@ -1060,6 +1066,14 @@ function renderCharts() {
   const zakladki = DEFINICJE_WYKRESOW.map(d => `<button class="chart-tab"
     data-wykres="${d.id}" aria-pressed="${d.id === aktywny.id}">${d.etykieta}</button>`).join("");
 
+  const wyjasnienie = aktywny.id === "trend"
+    ? `<p class="chart-wyjasnienie">Ile procent własnej średniej sezonowej reprezentuje
+       bieżąca forma Widzewa — każdy mecz waży tym mniej, im dawniej się odbył
+       (nowsze liczą się bardziej, półokres ${POLOKRES_KOLEJEK} kolejek). <b>100%</b> to
+       dokładnie średnia całego sezonu, <b>113%</b> znaczy „ostatnio lepiej niż
+       przeciętnie w tym sezonie".</p>`
+    : "";
+
   const kolumny = sezony.map(s => {
     const ost = pozycjeSeria(s).slice(-1)[0];
     const info = ost ? `${ost.p}. po k.${ost.k}` : "brak danych";
@@ -1070,6 +1084,7 @@ function renderCharts() {
   }).join("");
 
   el.innerHTML = `<div class="chart-taby">${zakladki}</div>
+    ${wyjasnienie}
     <div class="chart-kolumny">${kolumny}</div>`;
 }
 
