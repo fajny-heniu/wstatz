@@ -184,9 +184,23 @@ SZABLON = """<!DOCTYPE html>
   /* wykres pozycji */
   .charts {
     max-width: 1240px; margin: 0 auto 22px;
-    display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
   }
   .charts[hidden] { display: none; }
+  .chart-taby {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;
+  }
+  .chart-tab {
+    font-family: var(--label); font-size: 12px; font-weight: 500;
+    padding: 6px 12px; cursor: pointer;
+    background: var(--panel); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 0;
+  }
+  .chart-tab[aria-pressed="true"] {
+    background: var(--oxblood); color: #fff; border-color: var(--oxblood);
+  }
+  .chart-kolumny {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
+  }
   .chart { background: var(--panel); border: 1px solid var(--line); }
   .chart h3 {
     font-family: var(--display); text-transform: uppercase; font-weight: 500;
@@ -195,10 +209,6 @@ SZABLON = """<!DOCTYPE html>
   }
   .chart h3 span { float: right; opacity: .75; font-family: var(--data); letter-spacing: 0; }
   .chart .wrap { padding: 10px 12px 6px; }
-  .chart-tytul {
-    margin: 10px 14px 0; font-size: 11px; letter-spacing: .06em;
-    text-transform: uppercase; color: var(--muted); font-weight: 600;
-  }
   .chart svg { width: 100%; height: auto; display: block; }
   .chart .pusto { padding: 20px 14px; font-size: 12.5px; color: var(--muted); }
   .grid-line { stroke: #e4e1dc; stroke-width: 1; }
@@ -217,7 +227,7 @@ SZABLON = """<!DOCTYPE html>
   .chart-legenda .lg-gole { color: var(--signal); font-weight: 700; }
   .chart-legenda .lg-xg { color: var(--oxblood); }
   @media (max-width: 860px) {
-    .charts { grid-template-columns: 1fr; }
+    .chart-kolumny { grid-template-columns: 1fr; }
   }
   button {
     font-family: var(--label); font-size: 13px; font-weight: 500;
@@ -900,22 +910,94 @@ function svgWykresGoleXG(sezon) {
   <p class="chart-legenda"><span class="lg-gole">— gole</span><span class="lg-xg">┄ xG</span></p>`;
 }
 
+// Punkty rzeczywiste vs maksymalnie mozliwe (3 x kolejka - tyle dalyby same
+// wygrane). "Tempo" na koncu wykresu to prosty % realizacji potencjalu,
+// ten sam typ liczenia co gole-vs-xG, tylko odniesiony do punktow.
+function punktySkumulowane(sezon) {
+  return DANE.sezony[sezon].mecze
+    .filter(m => m.rezultat && m.punkty_do !== null)
+    .map(m => ({ k: m.kolejka, pkt: m.punkty_do, maks: m.kolejka * 3 }))
+    .sort((a, b) => a.k - b.k);
+}
+
+function svgWykresPunkty(sezon) {
+  const dane = punktySkumulowane(sezon);
+  if (!dane.length) {
+    return `<div class="pusto">Brak jeszcze rozegranych meczów w tym sezonie.</div>`;
+  }
+  const { l: padL, r: padR, t: padT, b: padB } = CHART_PAD;
+  const W = CHART_W, H = CHART_H, maxK = CHART_MAXK;
+  const maxY = maxK * 3;  // maksymalna mozliwa linia zawsze siega 3 x 34
+  const krok = 20;
+  const xOf = k => padL + (k - 1) / (maxK - 1) * (W - padL - padR);
+  const yOf = v => padT + (1 - v / maxY) * (H - padT - padB);
+
+  let siatka = "";
+  for (let y = 0; y <= maxY + 0.001; y += krok) {
+    const py = yOf(y);
+    siatka += `<line class="grid-line" x1="${padL}" y1="${py}" x2="${W - padR}" y2="${py}"/>`;
+    siatka += `<text class="grid-label" x="2" y="${py + 3}">${Math.round(y)}</text>`;
+  }
+  let osX = "";
+  for (let k = 1; k <= maxK; k += 5) {
+    osX += `<text class="grid-label" x="${xOf(k)}" y="${H - 6}" text-anchor="middle">${k}</text>`;
+  }
+
+  // linia maksymalna to prosta strzalka od 3 do maxY - nie potrzebuje danych,
+  // tylko dwoch koncow
+  const linMaks = `${xOf(1)},${yOf(3)} ${xOf(dane[dane.length - 1].k)},${yOf(dane[dane.length - 1].maks)}`;
+  const linPkt = dane.map(d => `${xOf(d.k)},${yOf(d.pkt)}`).join(" ");
+  const koniec = dane[dane.length - 1];
+  const tempo = Math.round(koniec.pkt / koniec.maks * 100);
+  const etPkt = `<text class="etykieta" x="${Math.min(xOf(koniec.k) + 8, W - 30)}" y="${yOf(koniec.pkt) + 4}">${koniec.pkt}</text>`;
+  const etMaks = `<text class="etykieta etykieta-xg" x="${Math.min(xOf(koniec.k) + 8, W - 30)}" y="${yOf(koniec.maks) + 4}">${koniec.maks}</text>`;
+
+  return `<svg viewBox="0 0 ${W} ${H}">
+    ${siatka}${osX}
+    <polyline class="seria-xg" points="${linMaks}"/>
+    <polyline class="seria" points="${linPkt}"/>
+    ${etPkt}${etMaks}
+  </svg>
+  <p class="chart-legenda"><span class="lg-gole">— punkty</span><span class="lg-xg">┄ maksimum (3×k)</span>
+    <span style="margin-left:auto">tempo: ${tempo}%</span></p>`;
+}
+
+// Definicje wykresow w jednym miejscu - zakladki generuja sie z tej listy,
+// dodanie nowego wykresu w przyszlosci to jedna nowa linia tutaj.
+const DEFINICJE_WYKRESOW = [
+  { id: "pozycja", etykieta: "Pozycja w tabeli", fn: svgWykresPozycji },
+  { id: "xg", etykieta: "xG per kolejka", fn: svgWykresXG },
+  { id: "gole-xg", etykieta: "Gole vs xG", fn: svgWykresGoleXG },
+  { id: "punkty", etykieta: "Punkty vs możliwe", fn: svgWykresPunkty },
+];
+let aktywnyWykres = "pozycja";
+
 function renderCharts() {
   const el = document.getElementById("charts");
-  el.innerHTML = sezony.map(s => {
+  const aktywny = DEFINICJE_WYKRESOW.find(d => d.id === aktywnyWykres) || DEFINICJE_WYKRESOW[0];
+
+  const zakladki = DEFINICJE_WYKRESOW.map(d => `<button class="chart-tab"
+    data-wykres="${d.id}" aria-pressed="${d.id === aktywny.id}">${d.etykieta}</button>`).join("");
+
+  const kolumny = sezony.map(s => {
     const ost = pozycjeSeria(s).slice(-1)[0];
     const info = ost ? `${ost.p}. po k.${ost.k}` : "brak danych";
     return `<div class="chart">
       <h3>${pelny(s)}<span>${info}</span></h3>
-      <p class="chart-tytul">Pozycja w tabeli</p>
-      <div class="wrap">${svgWykresPozycji(s)}</div>
-      <p class="chart-tytul">xG per kolejka</p>
-      <div class="wrap">${svgWykresXG(s)}</div>
-      <p class="chart-tytul">Gole vs xG (skumulowane)</p>
-      <div class="wrap">${svgWykresGoleXG(s)}</div>
+      <div class="wrap">${aktywny.fn(s)}</div>
     </div>`;
   }).join("");
+
+  el.innerHTML = `<div class="chart-taby">${zakladki}</div>
+    <div class="chart-kolumny">${kolumny}</div>`;
 }
+
+document.getElementById("charts").addEventListener("click", e => {
+  const tab = e.target.closest(".chart-tab");
+  if (!tab) return;
+  aktywnyWykres = tab.dataset.wykres;
+  renderCharts();
+});
 
 document.getElementById("mode").addEventListener("click", e => {
   alignByRound = !alignByRound;
