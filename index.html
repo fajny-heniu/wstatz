@@ -301,7 +301,10 @@
     font-family: var(--data); color: var(--muted); flex: none; width: 82px;
   }
   .h2h-mecz { flex: 1 1 auto; font-family: var(--label); }
-  .h2h-wynik { font-family: var(--data); font-weight: 700; flex: none; }
+  .h2h-wynik {
+    font-family: var(--data); font-weight: 700; flex: none;
+    width: 34px; text-align: right;
+  }
   .score { font-weight: 700; }
   .wkrotce {
     font-weight: 500; font-style: italic; font-size: 11px;
@@ -666,8 +669,8 @@ function wierszH2H(mecz) {
       <div class="h2h-linia">
         <span class="badge ${h.rezultat}">${h.rezultat}</span>
         <span class="h2h-sezon">${pelny(h.__sezon)} k${h.kolejka}</span>
-        <span class="h2h-mecz">${h.gospodarz} – ${h.gosc}</span>
         <span class="h2h-wynik">${h.wynik || "–"}</span>
+        <span class="h2h-mecz">${h.gospodarz} – ${h.gosc}</span>
       </div>`).join("") + `</div>`;
   }
   return `<tr class="h2h-panel"><td colspan="${kolspan}">
