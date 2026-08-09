@@ -212,20 +212,24 @@ SZABLON = """<!DOCTYPE html>
   .chart svg { width: 100%; height: auto; display: block; }
   .chart .pusto { padding: 20px 14px; font-size: 12.5px; color: var(--muted); }
   .grid-line { stroke: #e4e1dc; stroke-width: 1; }
+  .grid-line-100 { stroke: #c2bdb6; stroke-width: 1; stroke-dasharray: 2 2; }
   .grid-label { fill: #a8aeb3; font-family: ui-monospace, monospace; font-size: 9px; }
   .seria { fill: none; stroke: var(--signal); stroke-width: 2; }
   .seria-xg { fill: none; stroke: var(--oxblood); stroke-width: 1.6; stroke-dasharray: 4 3; }
+  .seria-strz { fill: none; stroke: #7a7f84; stroke-width: 1.6; stroke-dasharray: 1 3; }
   .kropka { fill: var(--panel); stroke: var(--signal); stroke-width: 1.6; }
   .ostatni { fill: var(--signal); stroke: none; }
   .etykieta { fill: var(--oxblood); font-family: ui-monospace, monospace;
     font-size: 11px; font-weight: 700; }
   .etykieta-xg { fill: var(--oxblood); opacity: .8; }
+  .etykieta-strz { fill: #7a7f84; opacity: .9; }
   .chart-legenda {
     margin: 2px 14px 10px; font-size: 10.5px; color: var(--muted);
     display: flex; gap: 12px;
   }
   .chart-legenda .lg-gole { color: var(--signal); font-weight: 700; }
   .chart-legenda .lg-xg { color: var(--oxblood); }
+  .chart-legenda .lg-strz { color: #6f7479; }
   @media (max-width: 860px) {
     .chart-kolumny { grid-template-columns: 1fr; }
   }
@@ -962,6 +966,102 @@ function svgWykresPunkty(sezon) {
     <span style="margin-left:auto">tempo: ${tempo}%</span></p>`;
 }
 
+// Trend z wygaszaniem wykladniczym (polokres 8 kolejek - kazdy kolejny
+// mecz w tyl wazy polowe tego, co mecz o 8 kolejek nowszy). Trzy metryki
+// (punkty, strzaly, xGA) na wspolnej skali "% sredniej sezonowej", zamiast
+// blendowania w jedna liczbe - unika problemu roznych skal (punkty 0-3,
+// strzaly 5-25), ktory pokazal, ze prosta suma bylaby zdominowana przez
+// strzaly. xGA nizej = lepiej, pozostale dwie wyzej = lepiej - to jest
+// jedyna asymetria, ktorej nie da sie ukryc bez zaciemniania liczb.
+const POLOKRES_KOLEJEK = 8;
+const XI_TREND = Math.log(2) / POLOKRES_KOLEJEK;
+
+function pktMeczu(m) {
+  return m.rezultat === "W" ? 3 : m.rezultat === "R" ? 1 : 0;
+}
+
+function trendWygaszony(sezon) {
+  const mecze = DANE.sezony[sezon].mecze
+    .filter(m => m.rezultat && m.widzew_shots !== null)
+    .sort((a, b) => a.kolejka - b.kolejka);
+
+  return mecze.map((_, i) => {
+    const K = mecze[i].kolejka;
+    let sumaW = 0, sumaPkt = 0, sumaStrz = 0, sumaXga = 0;
+    for (let j = 0; j <= i; j++) {
+      const x = mecze[j];
+      const w = Math.exp(-XI_TREND * (K - x.kolejka));
+      sumaW += w;
+      sumaPkt += w * pktMeczu(x);
+      sumaStrz += w * x.widzew_shots;
+      sumaXga += w * x.rywal_xg;
+    }
+    return { k: K, pkt: sumaPkt / sumaW, strz: sumaStrz / sumaW, xga: sumaXga / sumaW };
+  });
+}
+
+function svgWykresTrend(sezon) {
+  const dane = trendWygaszony(sezon);
+  if (!dane.length) {
+    return `<div class="pusto">Brak jeszcze rozegranych meczów w tym sezonie.</div>`;
+  }
+  const sr = DANE.sezony[sezon].srednie;
+  const srPkt = punktyNaMecz(sezon);
+  const srStrz = sr.widzew_shots;
+  const srXga = sr.rywal_xg;
+  if (!srPkt || !srStrz || !srXga) {
+    return `<div class="pusto">Za mało danych do policzenia trendu.</div>`;
+  }
+
+  const seria = dane.map(d => ({
+    k: d.k,
+    pkt: d.pkt / srPkt * 100,
+    strz: d.strz / srStrz * 100,
+    xga: d.xga / srXga * 100,
+  }));
+
+  const { l: padL, r: padR, t: padT, b: padB } = CHART_PAD;
+  const W = CHART_W, H = CHART_H, maxK = CHART_MAXK;
+  const wszystkie = seria.flatMap(s => [s.pkt, s.strz, s.xga]);
+  const maxY = Math.max(...wszystkie, 130);
+  const minY = Math.min(...wszystkie, 70, 0);
+  const krok = 25;
+  const xOf = k => padL + (k - 1) / (maxK - 1) * (W - padL - padR);
+  const yOf = v => padT + (1 - (v - minY) / (maxY - minY)) * (H - padT - padB);
+
+  let siatka = "";
+  for (let y = Math.ceil(minY / krok) * krok; y <= maxY + 0.001; y += krok) {
+    const py = yOf(y);
+    siatka += `<line class="grid-line" x1="${padL}" y1="${py}" x2="${W - padR}" y2="${py}"/>`;
+    siatka += `<text class="grid-label" x="2" y="${py + 3}">${y}%</text>`;
+  }
+  // linia odniesienia 100% - "dokladnie srednia sezonu", wyrazniejsza niz zwykla siatka
+  const y100 = yOf(100);
+  siatka += `<line class="grid-line-100" x1="${padL}" y1="${y100}" x2="${W - padR}" y2="${y100}"/>`;
+  let osX = "";
+  for (let k = 1; k <= maxK; k += 5) {
+    osX += `<text class="grid-label" x="${xOf(k)}" y="${H - 6}" text-anchor="middle">${k}</text>`;
+  }
+
+  const linia = (klucz) => seria.map(s => `${xOf(s.k)},${yOf(s[klucz])}`).join(" ");
+  const koniec = seria[seria.length - 1];
+  const etTxt = (klucz, klasa) =>
+    `<text class="etykieta ${klasa}" x="${Math.min(xOf(koniec.k) + 8, W - 30)}" y="${yOf(koniec[klucz]) + 4}">${Math.round(koniec[klucz])}%</text>`;
+
+  return `<svg viewBox="0 0 ${W} ${H}">
+    ${siatka}${osX}
+    <polyline class="seria-strz" points="${linia("strz")}"/>
+    <polyline class="seria-xg" points="${linia("xga")}"/>
+    <polyline class="seria" points="${linia("pkt")}"/>
+    ${etTxt("pkt", "")}${etTxt("strz", "etykieta-strz")}${etTxt("xga", "etykieta-xg")}
+  </svg>
+  <p class="chart-legenda">
+    <span class="lg-gole">— punkty</span>
+    <span class="lg-strz">╍ strzały</span>
+    <span class="lg-xg">┄ xGA (niżej = lepiej)</span>
+  </p>`;
+}
+
 // Definicje wykresow w jednym miejscu - zakladki generuja sie z tej listy,
 // dodanie nowego wykresu w przyszlosci to jedna nowa linia tutaj.
 const DEFINICJE_WYKRESOW = [
@@ -969,6 +1069,7 @@ const DEFINICJE_WYKRESOW = [
   { id: "xg", etykieta: "xG per kolejka", fn: svgWykresXG },
   { id: "gole-xg", etykieta: "Gole vs xG", fn: svgWykresGoleXG },
   { id: "punkty", etykieta: "Punkty vs możliwe", fn: svgWykresPunkty },
+  { id: "trend", etykieta: "Trend", fn: svgWykresTrend },
 ];
 let aktywnyWykres = "pozycja";
 
