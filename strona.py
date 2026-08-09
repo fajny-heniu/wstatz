@@ -283,7 +283,7 @@ SZABLON = """<!DOCTYPE html>
   /* w trybie zestawienia sortowanie psuloby wyrownanie kolejek - wygaszamy */
   .align-mode thead th.sortowalna { cursor: default; opacity: .5; }
   .align-mode thead th.sortowalna:hover { color: var(--muted); }
-  td { padding: 8px 6px; border-bottom: 1px solid #eceae6; text-align: right; white-space: nowrap; }
+  td { padding: 14px 6px; border-bottom: 1px solid #eceae6; text-align: right; white-space: nowrap; }
   tbody tr:hover td { background: #f2efe9; }
   .gutter { width: 16px; padding-left: 12px; }
   /* wstazka formy: splot sezonu widoczny przy przegladaniu w dol.
@@ -324,7 +324,10 @@ SZABLON = """<!DOCTYPE html>
   .h2h-sezon {
     font-family: var(--data); color: var(--muted); flex: none; width: 82px;
   }
-  .h2h-mecz { flex: 1 1 auto; font-family: var(--label); }
+  .h2h-mecz {
+    flex: 1 1 auto; min-width: 0; font-family: var(--label);
+    overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  }
   .h2h-wynik {
     font-family: var(--data); font-weight: 700; flex: none;
     width: 34px; text-align: right;
@@ -357,6 +360,11 @@ SZABLON = """<!DOCTYPE html>
     .seasons { grid-template-columns: 1fr; }
     .domwyjazd { grid-template-columns: 1fr; }
     thead th { position: static; }
+    /* Panel H2H siedzi w <td colspan="12"> tak samo szerokim jak cala
+       tabela, wiec bez tego ograniczenia wynik i bilans "uciekaly" poza
+       widoczny na telefonie kadr, wymagajac przewijania w bok - a to
+       jest wlasnie ta czesc, ktora ma byc widoczna natychmiast. */
+    .h2h-tytul, .h2h-linia { max-width: 260px; }
   }
   @media (prefers-reduced-motion: no-preference) {
     tbody tr { transition: background .12s ease; }
