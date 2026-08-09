@@ -266,7 +266,7 @@ SZABLON = """<!DOCTYPE html>
   .csv-link { color: #fff; opacity: 1; text-decoration: none; border-bottom: 1px dotted rgba(255,255,255,.5); }
   .csv-link:hover { border-bottom-style: solid; }
   .scroll { overflow-x: auto; }
-  table { border-collapse: collapse; width: 100%; font-family: var(--data); font-size: 12.5px; }
+  table { border-collapse: collapse; width: 100%; font-family: var(--data); font-size: clamp(11.5px, 1.5vw + 6px, 13px); }
   thead th {
     font-family: var(--label); font-size: 9.5px; font-weight: 700;
     letter-spacing: .07em; text-transform: uppercase; color: var(--muted);
@@ -279,7 +279,7 @@ SZABLON = """<!DOCTYPE html>
   /* w trybie zestawienia sortowanie psuloby wyrownanie kolejek - wygaszamy */
   .align-mode thead th.sortowalna { cursor: default; opacity: .5; }
   .align-mode thead th.sortowalna:hover { color: var(--muted); }
-  td { padding: 10px 6px; border-bottom: 1px solid #eceae6; text-align: right; white-space: nowrap; }
+  td { padding: 8px 6px; border-bottom: 1px solid #eceae6; text-align: right; white-space: nowrap; }
   tbody tr:hover td { background: #f2efe9; }
   .gutter { width: 16px; padding-left: 12px; }
   /* wstazka formy: splot sezonu widoczny przy przegladaniu w dol.
@@ -289,7 +289,7 @@ SZABLON = """<!DOCTYPE html>
   .tick.R { background: var(--draw); border-color: var(--draw); }
   .tick.P { background: var(--loss); border-color: var(--loss); }
   .k { color: var(--muted); width: 26px; }
-  .match { text-align: left; font-family: var(--label); font-size: 12.5px; white-space: normal; line-height: 1.4; }
+  .match { text-align: left; font-family: var(--label); font-size: clamp(11.5px, 1.5vw + 6px, 13px); white-space: normal; line-height: 1.4; }
   .match .w { font-weight: 700; color: var(--oxblood); }
   .match { cursor: pointer; }
   .match:hover { text-decoration: underline; text-decoration-color: var(--line); }
@@ -315,7 +315,7 @@ SZABLON = """<!DOCTYPE html>
   }
   .h2h-brak { font-size: 12px; color: var(--muted); font-style: italic; margin: 0; }
   .h2h-lista { display: flex; flex-direction: column; gap: 5px; }
-  .h2h-linia { display: flex; align-items: baseline; gap: 9px; font-size: 12.5px; }
+  .h2h-linia { display: flex; align-items: baseline; gap: 9px; font-size: clamp(11.5px, 1.5vw + 6px, 13px); }
   .h2h-linia .badge { flex: none; }
   .h2h-sezon {
     font-family: var(--data); color: var(--muted); flex: none; width: 82px;
