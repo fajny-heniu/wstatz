@@ -487,7 +487,10 @@ function formaSeria(sezon, n = 5) {
     .slice(0, n)
     .reverse();
   const braki = n - grane.length;
-  return Array(braki).fill(null).concat(grane);
+  // Puste miejsca na KONIEC (przyszlosc, kolejki jeszcze nierozegrane w tym
+  // 5-kolejkowym oknie) - nie na start. "?" ma znaczyc "jeszcze sie nie
+  // wydarzylo", nie "przed sezonem", co nie ma zadnego sensownego odniesienia.
+  return grane.concat(Array(braki).fill(null));
 }
 
 function renderForma() {
