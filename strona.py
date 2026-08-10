@@ -201,6 +201,8 @@ SZABLON = """<!DOCTYPE html>
     padding: 9px 0; border-bottom: 1px solid var(--hairline);
   }
   .dw-line:last-child { border-bottom: none; }
+  .dw-lacznie { border-bottom: 1px solid var(--line); }
+  .dw-lacznie .etyk { color: var(--oxblood); }
   .dw-line .etyk {
     flex: 1 1 auto; font-family: var(--label); font-size: 12px;
     font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
@@ -594,7 +596,8 @@ function renderForma() {
 // Bilans liczony wprost z pola venue, ktore juz siedzi w kazdym meczu -
 // zero nowych danych, tylko inny przekroj tego, co juz mamy.
 function bilansWedlugMiejsca(sezon, venue) {
-  const mecze = DANE.sezony[sezon].mecze.filter(m => m.venue === venue && m.rezultat);
+  const mecze = DANE.sezony[sezon].mecze.filter(m =>
+    (venue ? m.venue === venue : true) && m.rezultat);
   const w = mecze.filter(m => m.rezultat === "W").length;
   const r = mecze.filter(m => m.rezultat === "R").length;
   const p = mecze.filter(m => m.rezultat === "P").length;
@@ -606,12 +609,12 @@ function bilansWedlugMiejsca(sezon, venue) {
 function renderDomWyjazd() {
   const el = document.getElementById("domwyjazd");
 
-  function linia(etykieta, b) {
+  function linia(etykieta, b, lacznie = false) {
     const bilansTxt = b.n ? `${b.w}-${b.r}-${b.p}` : "–";
     const pktTxt = b.n
       ? `${b.pkt} pkt · ${b.pktNaMecz.toFixed(2)}/mecz`
       : "brak rozegranych";
-    return `<div class="dw-line">
+    return `<div class="dw-line${lacznie ? " dw-lacznie" : ""}">
       <span class="etyk">${etykieta}</span>
       <span class="bil">${bilansTxt}</span>
       <span class="pkt">${pktTxt}</span>
@@ -622,6 +625,7 @@ function renderDomWyjazd() {
     return `<section>
       <h2>${pelny(sezon)}</h2>
       <div class="dw-body">
+        ${linia("Łącznie", bilansWedlugMiejsca(sezon), true)}
         ${linia("W domu", bilansWedlugMiejsca(sezon, "H"))}
         ${linia("Na wyjeździe", bilansWedlugMiejsca(sezon, "A"))}
       </div>
