@@ -360,10 +360,15 @@ SZABLON = """<!DOCTYPE html>
     .seasons { grid-template-columns: 1fr; }
     .domwyjazd { grid-template-columns: 1fr; }
     thead th { position: static; }
+  }
+  @media (max-width: 560px) {
     /* Panel H2H siedzi w <td colspan="12"> tak samo szerokim jak cala
        tabela, wiec bez tego ograniczenia wynik i bilans "uciekaly" poza
        widoczny na telefonie kadr, wymagajac przewijania w bok - a to
-       jest wlasnie ta czesc, ktora ma byc widoczna natychmiast. */
+       jest wlasnie ta czesc, ktora ma byc widoczna natychmiast. Wezszy
+       prog niz reszta reguł mobilnych (860px) - to ma sie wlaczac tylko
+       naprawde na wąskim telefonie w portrecie, nie w landscape/tablecie,
+       gdzie miejsca jest juz wystarczajaco duzo. */
     .h2h-tytul, .h2h-linia { max-width: 260px; }
   }
   @media (prefers-reduced-motion: no-preference) {
