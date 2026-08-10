@@ -33,17 +33,47 @@ SZABLON = """<!DOCTYPE html>
   :root {
     --ground: #dfe3e6;
     --panel: #fbfaf8;
+    --panel-alt: #f2efe9;
+    --panel-texture: #f6f4f0;
     --ink: #1b1a19;
     --oxblood: #5e1018;
     --signal: #e01b24;
     --muted: #7a7f84;
+    --muted-2: #9aa1a7;
+    --muted-3: #6f7479;
+    --faint: #c3bfb9;
     --line: #c7ced3;
+    --hairline: #eceae6;
+    --chart-grid: #e4e1dc;
+    --chart-grid-ref: #c2bdb6;
+    --chart-label: #a8aeb3;
     --win: #1c6b3a;
     --draw: #5a6066;
     --loss: #9a2b2b;
     --display: "Oswald", "Arial Narrow", "Haettenschweiler", system-ui, sans-serif;
     --data: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     --label: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  html[data-theme="dark"] {
+    --ground: #1c1a19;
+    --panel: #272422;
+    --panel-alt: #322e2b;
+    --panel-texture: #3a3532;
+    --ink: #e8e4de;
+    --oxblood: #7a1620;
+    --signal: #ff3b2f;
+    --muted: #9b9691;
+    --muted-2: #7d7772;
+    --muted-3: #857f79;
+    --faint: #55504b;
+    --line: #45433f;
+    --hairline: #322e2b;
+    --chart-grid: #38352f;
+    --chart-grid-ref: #4d4842;
+    --chart-label: #6f6a64;
+    --win: #3a9c5c;
+    --draw: #8a8580;
+    --loss: #c94b45;
   }
   * { box-sizing: border-box; }
   body {
@@ -76,7 +106,7 @@ SZABLON = """<!DOCTYPE html>
     border-top: 1px solid var(--line); padding-top: 12px;
     font-size: 11.5px; color: var(--muted); line-height: 1.7;
   }
-  footer b { font-weight: 600; color: #5a6066; }
+  footer b { font-weight: 600; color: var(--draw); }
 
   /* pasek porownania srednich */
   .compare {
@@ -104,10 +134,10 @@ SZABLON = """<!DOCTYPE html>
   }
   .metric .row.was { margin-top: 5px; }
   .metric .row.was .val {
-    font-family: var(--data); font-size: 14px; color: #6f7479;
+    font-family: var(--data); font-size: 14px; color: var(--muted-3);
   }
   .metric .delta { font-family: var(--data); font-size: 12px; }
-  .up { color: #1c6b3a; } .down { color: #9a2b2b; } .flat { color: var(--muted); }
+  .up { color: var(--win); } .down { color: var(--loss); } .flat { color: var(--muted); }
   /* .metric .row .val ma wyzszy priorytet (3 klasy w lancuchu) niz samo .up/.down -
      bez tych regul znak nadwyzki goli nigdy by sie nie pokolorowal */
   .metric .row.now .val.up { color: var(--win); }
@@ -127,13 +157,13 @@ SZABLON = """<!DOCTYPE html>
     padding: 9px 2px;
   }
   .legenda-tabeli b {
-    font-family: var(--data); font-weight: 700; color: #5a6066;
+    font-family: var(--data); font-weight: 700; color: var(--draw);
     letter-spacing: .02em;
   }
   .legenda-tabeli span { margin-right: 14px; white-space: nowrap; }
   .hint-h2h {
     max-width: 1240px; margin: 0 auto 14px; font-size: 12px;
-    color: #5a6066; font-weight: 700; padding: 0 2px;
+    color: var(--draw); font-weight: 700; padding: 0 2px;
   }
   .hint-h2h .h2h-toggle { color: var(--muted); font-weight: 700; }
 
@@ -156,7 +186,7 @@ SZABLON = """<!DOCTYPE html>
   .badge.W { background: var(--win); }
   .badge.P { background: var(--loss); }
   .badge.R { background: var(--draw); }
-  .badge.q { background: var(--line); color: #9aa1a7; }
+  .badge.q { background: var(--line); color: var(--muted-2); }
   .forma .legenda { font-size: 11.5px; color: var(--muted); }
 
   /* dom/wyjazd: ta sama konwencja co tabele sezonow - obecny sezon po lewej.
@@ -168,7 +198,7 @@ SZABLON = """<!DOCTYPE html>
   .dw-body { padding: 4px 14px 8px; }
   .dw-line {
     display: flex; align-items: baseline; gap: 10px;
-    padding: 9px 0; border-bottom: 1px solid #eceae6;
+    padding: 9px 0; border-bottom: 1px solid var(--hairline);
   }
   .dw-line:last-child { border-bottom: none; }
   .dw-line .etyk {
@@ -181,7 +211,7 @@ SZABLON = """<!DOCTYPE html>
     color: var(--signal);
   }
   .dw-line .pkt {
-    font-family: var(--data); font-size: 11.5px; color: #6f7479;
+    font-family: var(--data); font-size: 11.5px; color: var(--muted-3);
     white-space: nowrap;
   }
 
@@ -204,10 +234,10 @@ SZABLON = """<!DOCTYPE html>
   }
   .chart-wyjasnienie {
     font-size: 12px; line-height: 1.6; color: var(--muted);
-    margin: 0 0 14px; padding: 8px 10px; background: #f2efe9;
+    margin: 0 0 14px; padding: 8px 10px; background: var(--panel-alt);
     border-left: 3px solid var(--oxblood);
   }
-  .chart-wyjasnienie b { color: #5a6066; font-family: var(--data); }
+  .chart-wyjasnienie b { color: var(--draw); font-family: var(--data); }
   .chart-kolumny {
     display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
   }
@@ -221,25 +251,25 @@ SZABLON = """<!DOCTYPE html>
   .chart .wrap { padding: 10px 12px 6px; }
   .chart svg { width: 100%; height: auto; display: block; }
   .chart .pusto { padding: 20px 14px; font-size: 12.5px; color: var(--muted); }
-  .grid-line { stroke: #e4e1dc; stroke-width: 1; }
-  .grid-line-100 { stroke: #c2bdb6; stroke-width: 1; stroke-dasharray: 2 2; }
-  .grid-label { fill: #a8aeb3; font-family: ui-monospace, monospace; font-size: 9px; }
+  .grid-line { stroke: var(--chart-grid); stroke-width: 1; }
+  .grid-line-100 { stroke: var(--chart-grid-ref); stroke-width: 1; stroke-dasharray: 2 2; }
+  .grid-label { fill: var(--chart-label); font-family: ui-monospace, monospace; font-size: 9px; }
   .seria { fill: none; stroke: var(--signal); stroke-width: 2; }
   .seria-xg { fill: none; stroke: var(--oxblood); stroke-width: 1.6; stroke-dasharray: 4 3; }
-  .seria-strz { fill: none; stroke: #7a7f84; stroke-width: 1.6; stroke-dasharray: 1 3; }
+  .seria-strz { fill: none; stroke: var(--muted); stroke-width: 1.6; stroke-dasharray: 1 3; }
   .kropka { fill: var(--panel); stroke: var(--signal); stroke-width: 1.6; }
   .ostatni { fill: var(--signal); stroke: none; }
   .etykieta { fill: var(--oxblood); font-family: ui-monospace, monospace;
     font-size: 11px; font-weight: 700; }
   .etykieta-xg { fill: var(--oxblood); opacity: .8; }
-  .etykieta-strz { fill: #7a7f84; opacity: .9; }
+  .etykieta-strz { fill: var(--muted); opacity: .9; }
   .chart-legenda {
     margin: 2px 14px 10px; font-size: 10.5px; color: var(--muted);
     display: flex; gap: 12px;
   }
   .chart-legenda .lg-gole { color: var(--signal); font-weight: 700; }
   .chart-legenda .lg-xg { color: var(--oxblood); }
-  .chart-legenda .lg-strz { color: #6f7479; }
+  .chart-legenda .lg-strz { color: var(--muted-3); }
   @media (max-width: 860px) {
     .chart-kolumny { grid-template-columns: 1fr; }
   }
@@ -283,8 +313,8 @@ SZABLON = """<!DOCTYPE html>
   /* w trybie zestawienia sortowanie psuloby wyrownanie kolejek - wygaszamy */
   .align-mode thead th.sortowalna { cursor: default; opacity: .5; }
   .align-mode thead th.sortowalna:hover { color: var(--muted); }
-  td { padding: 14px 6px; border-bottom: 1px solid #eceae6; text-align: right; white-space: nowrap; }
-  tbody tr:hover td { background: #f2efe9; }
+  td { padding: 14px 6px; border-bottom: 1px solid var(--hairline); text-align: right; white-space: nowrap; }
+  tbody tr:hover td { background: var(--panel-alt); }
   .gutter { width: 16px; padding-left: 12px; }
   /* wstazka formy: splot sezonu widoczny przy przegladaniu w dol.
      te same kolory co badge.W/.R/.P - jeden jezyk wizualny dla wyniku w calej stronie */
@@ -303,7 +333,7 @@ SZABLON = """<!DOCTYPE html>
   }
 
   .h2h-panel td {
-    background: #f2efe9; padding: 10px 16px 14px 40px;
+    background: var(--panel-alt); padding: 10px 16px 14px 40px;
     border-bottom: 1px solid var(--line); white-space: normal;
   }
   .h2h-tytul {
@@ -341,15 +371,15 @@ SZABLON = """<!DOCTYPE html>
   .xg-widzew { color: var(--signal); font-weight: 700; }
   /* xGA - dane rywala, stad przygaszony ton, nie czerwien sygnalowa
      zarezerwowana dla "to jest Widzew" */
-  .xga { color: #9aa1a7; }
+  .xga { color: var(--muted-2); }
   /* slad xG pod liczba - dane, nie ozdoba */
   .xg i {
     position: absolute; left: 4px; right: 4px; bottom: 2px; height: 2px;
     background: var(--signal); opacity: .3; transform-origin: left;
   }
-  .none { color: #c3bfb9; }
+  .none { color: var(--faint); }
   .empty td { height: 28px; background: repeating-linear-gradient(135deg,
-      #f6f4f0 0 4px, var(--panel) 4px 8px); }
+      var(--panel-texture) 0 4px, var(--panel) 4px 8px); }
   tfoot td {
     font-weight: 700; border-top: 2px solid var(--oxblood);
     border-bottom: none; padding-top: 9px; padding-bottom: 11px;
@@ -391,6 +421,7 @@ SZABLON = """<!DOCTYPE html>
 <div class="controls">
   <button id="mode" aria-pressed="false">Zestaw kolejka do kolejki</button>
   <button id="wykresy" aria-pressed="false">Pokaż wykresy</button>
+  <button id="motyw" aria-pressed="false">Ciemny motyw</button>
   <p class="hint" id="hint">Najnowsza kolejka u góry. Kliknij nagłówek kolumny (np. xG), aby sortować — osobno dla każdego sezonu.</p>
 </div>
 
@@ -415,6 +446,24 @@ SZABLON = """<!DOCTYPE html>
 <footer id="stopka"></footer>
 
 <script>
+const KLUCZ_MOTYWU = "wstatz-motyw";
+
+function zastosujMotyw(motyw) {
+  document.documentElement.dataset.theme = motyw;
+  const btn = document.getElementById("motyw");
+  if (btn) {
+    btn.setAttribute("aria-pressed", motyw === "dark");
+    btn.textContent = motyw === "dark" ? "Jasny motyw" : "Ciemny motyw";
+  }
+}
+
+// Zastosuj zapisany wybor mozliwie najwczesniej (ten skrypt siedzi na
+// koncu <body>, wiec pewnego "mrugniecia" jasnym tlem przed zastosowaniem
+// ciemnego przy powrocie na strone nie da sie tu w 100% wykluczyc -
+// pelne rozwiazanie wymagaloby osobnego, synchronicznego skryptu w
+// <head>, czego nie robimy teraz).
+zastosujMotyw(localStorage.getItem(KLUCZ_MOTYWU) || "light");
+
 const DANE = __DANE__;
 const METRYKI = [
   ["xg", "xG", 2],
@@ -1162,6 +1211,13 @@ document.getElementById("wykresy").addEventListener("click", e => {
     e.currentTarget.textContent = "Ukryj wykresy";
     e.currentTarget.setAttribute("aria-pressed", "true");
   }
+});
+
+document.getElementById("motyw").addEventListener("click", () => {
+  const obecny = document.documentElement.dataset.theme;
+  const nowy = obecny === "dark" ? "light" : "dark";
+  zastosujMotyw(nowy);
+  localStorage.setItem(KLUCZ_MOTYWU, nowy);
 });
 
 document.getElementById("seasons").addEventListener("click", e => {
