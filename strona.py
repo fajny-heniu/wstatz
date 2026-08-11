@@ -744,7 +744,10 @@ function h2hBilans(mecz, historia) {
   const w = wszystkie.filter(h => h.rezultat === "W").length;
   const r = wszystkie.filter(h => h.rezultat === "R").length;
   const p = wszystkie.filter(h => h.rezultat === "P").length;
-  return { w, r, p, n: wszystkie.length };
+  // n = w+r+p, NIE wszystkie.length - klikniety mecz moze byc zapowiedzia
+  // (bez wyniku), a wtedy dlugosc tablicy i suma W+R+P by sie rozjechaly
+  // (np. "9 m. * 3-1-4" gdzie 3+1+4=8, nie 9 - zlapane na Lechu Poznan).
+  return { w, r, p, n: w + r + p };
 }
 
 function wierszH2H(mecz) {
