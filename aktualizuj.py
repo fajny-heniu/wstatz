@@ -71,15 +71,18 @@ SELEKTORY = {
         ".tournamentHeader__country",
         ".description__country",
     ],
+    # UWAGA: te dwie listy nie moga zaczynac sie od tego samego, ogolnego
+    # selektora - brane "dwa pierwsze pasujace" elementy potrafia byc ta sama
+    # nazwa dwa razy, i wtedy gospodarz == gosc.
     "nazwa_gospodarza": [
-        '[data-testid="wcl-participantName"]',
+        '.duelParticipant__home [data-testid="wcl-participantName"]',
         ".duelParticipant__home .participant__participantName",
-        ".event__participant--home",
+        ".duelParticipant__home",
     ],
     "nazwa_goscia": [
-        '[data-testid="wcl-participantName"]',
+        '.duelParticipant__away [data-testid="wcl-participantName"]',
         ".duelParticipant__away .participant__participantName",
-        ".event__participant--away",
+        ".duelParticipant__away",
     ],
     # nazwy druzyn WEWNATRZ wiersza na liscie wynikow
     "wiersz_gospodarz": [
@@ -598,12 +601,47 @@ def wczytaj_statystyki(page, mid, diagnostyka=False):
         stop("Nie zapisuje niczego - dopasowanie etykiet wymaga poprawki.")
 
     meta = {"zrzut": str(zrzut) if zrzut else None, "droga": droga}
-    # naglowek meczu na Flashscore wyglada tak: "PKO BP EKSTRAKLASA - KOLEJKA 3"
+
+    # Nazwy druzyn: zbieramy WSZYSTKICH kandydatow i nie wybieramy tutaj -
+    # wybor nalezy do main(), ktore zna jeszcze wiersz z listy wynikow.
+    meta["kandydaci_nazw"] = []
+    # Tytul strony wyglada tak:
+    #   "JAG 0-2 WID | Jagiellonia Bialystok v Widzew Lodz 09/08/2026, Statystyki"
+    # Wynik i data sa w nim podane wprost, ale nazwy druzyn maja OKROJONE
+    # polskie znaki ("Widzew Lodz" bez z z kreska) - takie nazwy nie
+    # dopasowalyby sie do ALIASY_NAZW i rozjechalyby H2H. Dlatego z tytulu
+    # bierzemy wynik i date, a nazw stanowczo nie.
+    try:
+        tytul = page.title()
+        meta["tytul"] = tytul
+        w = re.match(r"\s*\S+\s+(\d+)\s*-\s*(\d+)\s+\S+", tytul)
+        if w:
+            meta["score_ft"] = f"{w.group(1)}:{w.group(2)}"
+        d = re.search(r"\b(\d{2})/(\d{2})/(\d{4})\b", tytul)
+        if d:
+            meta["date"] = f"{d.group(3)}-{d.group(2)}-{d.group(1)}"
+    except Exception:
+        pass
+    try:
+        gl, _ = pierwszy_dzialajacy(page, "nazwa_gospodarza")
+        gal, _ = pierwszy_dzialajacy(page, "nazwa_goscia")
+        if gl is not None and gal is not None:
+            meta["kandydaci_nazw"].append((
+                "elementy strony",
+                gl.first.inner_text(timeout=2000).strip().split("\n")[0],
+                gal.first.inner_text(timeout=2000).strip().split("\n")[0]))
+    except Exception:
+        pass
+
+    # naglowek meczu wyglada tak: "PKO BP EKSTRAKLASA - KOLEJKA 3"
     try:
         tekst = page.locator("body").inner_text(timeout=4000)
         r = re.search(r"(?:kolejka|runda)\s*(\d+)", tekst, re.I)
         if r:
             meta["round"] = int(r.group(1))
+        d = re.search(r"(\d{2})\.(\d{2})\.(\d{4})", tekst)
+        if d:
+            meta["date"] = f"{d.group(3)}-{d.group(2)}-{d.group(1)}"
         meta["ekstraklasa"] = "ekstraklasa" in bez_ogonkow(tekst[:1500])
     except Exception:
         pass
@@ -657,8 +695,28 @@ def scal_wiersz(wiersze, nowy):
 
 def sprawdz_przed_zapisem(r):
     """Te same kontrole co w zbuduj.py, ale PRZED zapisem - lepiej nie
-    dotykac pliku, niz cofac go potem."""
+    dotykac pliku, niz cofac go potem. Plus tozsamosc meczu: statystyki bez
+    nazw, daty i wyniku to wiersz-widmo, ktory nic nie znaczy."""
     bledy = []
+    for pole, opis in (("home_team", "nazwa gospodarza"), ("away_team", "nazwa goscia"),
+                       ("date", "data meczu"), ("score_ft", "wynik koncowy"),
+                       ("round", "numer kolejki"), ("fixture_id", "identyfikator meczu")):
+        if not str(r.get(pole) or "").strip():
+            bledy.append(f"brak: {opis} ({pole})")
+    if WIDZEW not in (r.get("home_team"), r.get("away_team")):
+        bledy.append(f"Widzew nie wystepuje w nazwach: "
+                     f"{r.get('home_team')!r} vs {r.get('away_team')!r}")
+    wynik = str(r.get("score_ft") or "")
+    if wynik and not re.fullmatch(r"\d+:\d+", wynik):
+        bledy.append(f"wynik ma dziwny format: {wynik!r}")
+    data = str(r.get("date") or "")
+    if data and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", data):
+        bledy.append(f"data ma dziwny format: {data!r}")
+    if data and str(r.get("season") or ""):
+        lata = re.findall(r"\d{4}", str(r["season"]))
+        rok = data[:4]
+        if lata and rok not in (lata[0], str(int(lata[0]) + 1)):
+            bledy.append(f"rok z daty ({rok}) nie pasuje do sezonu {r['season']}")
     for strona in ("home", "away"):
         s, sot = liczba(r.get(f"shots_{strona}")), liczba(r.get(f"sot_{strona}"))
         if s is None or sot is None:
@@ -713,7 +771,7 @@ def main():
     ap.add_argument("--mid", help="konkretny mecz zamiast najnowszego")
     ap.add_argument("--pozycja", type=int, help="pozycja w tabeli po tej kolejce")
     ap.add_argument("--bez-pusha", action="store_true", help="commit, ale nie pushuj")
-    a = ap.parse_args()
+    args = ap.parse_args()
 
     sciezka = plik_sezonu()
     wiersze, naglowki = wczytaj_csv(sciezka)
@@ -725,7 +783,7 @@ def main():
     krok(f"czytam {sciezka.name}")
     krok.ok(f"{len(wiersze)} wierszy, sezon {sezon}")
 
-    if not a.sucho and not a.diagnostyka:
+    if not args.sucho and not args.diagnostyka:
         krok("sprawdzam, czy repo jest czyste")
         if git("status", "--porcelain"):
             stop("W repo sa niezapisane zmiany. Zrob commit albo `git stash`,\n"
@@ -733,15 +791,15 @@ def main():
         krok.ok()
 
     krok("otwieram przegladarke")
-    pw, br, page = otworz_przegladarke(a.widok or a.diagnostyka)
-    krok.ok("chromium" + (", okno widoczne" if (a.widok or a.diagnostyka) else ""))
+    pw, br, page = otworz_przegladarke(args.widok or args.diagnostyka)
+    krok.ok("chromium" + (", okno widoczne" if (args.widok or args.diagnostyka) else ""))
 
     try:
-        mid = a.mid
+        mid = args.mid
         wiersz = None
         if not mid:
             krok("szukam najnowszego meczu ligowego")
-            mecze = znajdz_mecze(page, a.diagnostyka)
+            mecze = znajdz_mecze(page, args.diagnostyka)
             # tylko Ekstraklasa: sparingi i puchary miedzynarodowe maja na
             # Flashscore kraj w nawiasie przy nazwie druzyny
             zagrane = [m for m in mecze if m["wynik"] and m["liga"]]
@@ -753,16 +811,20 @@ def main():
             krok.ok(f"{mid}  {wiersz['gosp']} - {wiersz['gosc']}  {wiersz['wynik']}"
                     + (f", pominietych poza liga: {len(odrzucone)}" if odrzucone else ""))
         else:
-            znajdz_mecze(page, a.diagnostyka)
+            mecze = znajdz_mecze(page, args.diagnostyka)
+            wiersz = next((m for m in mecze if m["mid"] == mid), None)
+            if wiersz is None:
+                print(f"    (meczu {mid} nie ma na liscie wynikow - nazwy i date\n"
+                      f"     wezmiemy ze strony meczu)")
 
-        if mid in znane and not a.diagnostyka and not a.sucho:
+        if mid in znane and not args.diagnostyka and not args.sucho:
             print(f"\n    Mecz {mid} jest juz w CSV z wynikiem. Nic nowego.\n")
             return
-        if mid in znane and a.sucho:
+        if mid in znane and args.sucho:
             print(f"    (ten mecz jest juz w CSV - --sucho, wiec czytam go na probe)")
 
         krok("zbieram statystyki")
-        dane, meta = wczytaj_statystyki(page, mid, a.diagnostyka)
+        dane, meta = wczytaj_statystyki(page, mid, args.diagnostyka)
         krok.ok(f"{len(dane)} pol" + (f", zrzut: {meta['zrzut']}" if meta.get("zrzut") else ""))
     finally:
         try:
@@ -770,20 +832,37 @@ def main():
         except Exception:
             pass
 
-    if a.diagnostyka:
+    if args.diagnostyka:
         print("Diagnostyka skonczona. Wklej powyzsze do rozmowy - domapuje etykiety.")
         return
 
+    # Zrodla nazw w kolejnosci zaufania. Lista wynikow jest pierwsza, bo
+    # sprawdzila sie w praktyce; kazde zrodlo musi podac DWIE ROZNE nazwy.
+    zrodla = []
     if wiersz:
-        meta.setdefault("home_team", wiersz["gosp"])
-        meta.setdefault("away_team", wiersz["gosc"])
+        zrodla.append(("lista wynikow", wiersz["gosp"], wiersz["gosc"]))
+    zrodla += meta.get("kandydaci_nazw", [])
+
+    home = away = ""
+    zrodlo_nazw = "brak"
+    for opis, gosp, gosc in zrodla:
+        if gosp and gosc and gosp != gosc:
+            home, away, zrodlo_nazw = gosp, gosc, opis
+            break
+    if meta.get("tytul"):
+        print(f"    tytul strony: {meta['tytul'][:90]!r}")
+    print(f"    nazwy: {home or '?'} - {away or '?'} (zrodlo: {zrodlo_nazw})")
+    odrzucone = [f"{opis}: {gosp!r}/{gosc!r}" for opis, gosp, gosc in zrodla
+                 if not (gosp and gosc and gosp != gosc)]
+    for o in odrzucone:
+        print(f"    odrzucone zrodlo nazw -> {o}")
+
+    if wiersz:
         if not meta.get("date"):
             meta["date"] = wiersz["data"]
         if not meta.get("score_ft"):
             meta["score_ft"] = wiersz["wynik"]
 
-    home = meta.get("home_team") or ""
-    away = meta.get("away_team") or ""
     if WIDZEW not in (home, away):
         print(f"    UWAGA: nie rozpoznaje Widzewa w nazwach ({home!r} vs {away!r}).")
 
@@ -814,7 +893,7 @@ def main():
         "away_team": away,
         "score_ht": "",
         "score_ft": meta.get("score_ft", ""),
-        "position": a.pozycja if a.pozycja else (
+        "position": args.pozycja if args.pozycja else (
             (istniejacy or {}).get("position") or ""),
         "fixture_id": mid,
     })
@@ -836,7 +915,7 @@ def main():
     if not nowy["position"]:
         print("    Uwaga: kolumna 'position' pusta. Uzupelnij recznie albo podaj --pozycja N.")
 
-    if a.sucho:
+    if args.sucho:
         print("  --sucho: koniec, plik nietkniety.\n")
         return
 
@@ -870,7 +949,7 @@ def main():
     git("commit", "-m", opis)
     krok.ok(opis)
 
-    if a.bez_pusha:
+    if args.bez_pusha:
         print("\n    --bez-pusha: commit zostal lokalnie.\n")
         return
     krok("push")
