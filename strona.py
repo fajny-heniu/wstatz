@@ -570,27 +570,31 @@ function nadwyzkaGoli(sezon) {
 // Ostatnie n rozegranych meczow, od najstarszego do najnowszego (lewo->prawo).
 // Braki po lewej to mecze jeszcze nierozegrane - nie zero, nie pominiecie.
 function formaSeria(sezon, n = 5) {
-  const grane = DANE.sezony[sezon].mecze  // juz posortowane malejaco po kolejce
-    .filter(m => m.rezultat)
-    .slice(0, n)
-    .reverse();
-  const braki = n - grane.length;
-  // Puste miejsca na KONIEC (przyszlosc, kolejki jeszcze nierozegrane w tym
-  // 5-kolejkowym oknie) - nie na start. "?" ma znaczyc "jeszcze sie nie
-  // wydarzylo", nie "przed sezonem", co nie ma zadnego sensownego odniesienia.
-  return grane.concat(Array(braki).fill(null));
+  const wszystkie = DANE.sezony[sezon].mecze;  // juz posortowane malejaco po kolejce
+  const grane = wszystkie.filter(m => m.rezultat).slice(0, n);
+  // Konwencja portali (Flashscore) - najnowszy rozegrany mecz first, cofajac
+  // sie w czas w prawo. Jeden "?" na starcie to KONKRETNY najblizszy
+  // nadchodzacy mecz (najnizsza kolejka wsrod tych bez wyniku), nie wszystkie
+  // zapowiedzi na raz, nawet jesli w danych jest ich wiecej (np. 3 zapowiedzi
+  // naraz jak w 2026/27) - bo to psulo by sens "formy" (przewaga placeholderow
+  // nad realnymi wynikami).
+  const nadchodzace = wszystkie.filter(m => !m.rezultat);
+  const najblizszy = nadchodzace.length
+    ? nadchodzace.reduce((a, b) => a.kolejka < b.kolejka ? a : b)
+    : null;
+  return najblizszy ? [najblizszy, ...grane] : grane;
 }
 
 function renderForma() {
   const el = document.getElementById("forma");
   if (!teraz) { el.innerHTML = ""; return; }
   const seria = formaSeria(teraz, 5);
-  const boxes = seria.map(m => m
+  const boxes = seria.map(m => m.rezultat
     ? `<span class="badge ${m.rezultat}" title="k${m.kolejka}: ${m.gospodarz} ${m.wynik} ${m.gosc}">${m.rezultat}</span>`
-    : `<span class="badge q" title="mecz jeszcze nierozegrany">?</span>`
+    : `<span class="badge q" title="k${m.kolejka}: ${m.gospodarz} – ${m.gosc} (wkrótce)">?</span>`
   ).join("");
   el.innerHTML = `<b>Forma</b><span class="boxes">${boxes}</span>
-    <span class="legenda">ostatnie 5 kolejek · ${pelny(teraz)}</span>`;
+    <span class="legenda">od najnowszego · ostatnie 5 rozegranych · ${pelny(teraz)}</span>`;
 }
 
 // Bilans liczony wprost z pola venue, ktore juz siedzi w kazdym meczu -
