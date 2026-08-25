@@ -271,12 +271,18 @@
   .chart-legenda .lg-strz { color: var(--muted-3); }
   @media (max-width: 860px) {
     .chart-kolumny { grid-template-columns: 1fr; }
-    /* "span 2" zaklada co najmniej 2 kolumny w siatce compare - na waskim
-       telefonie auto-fit generuje tylko jedna, wiec span 2 probowal
-       zarezerwowac szerokosc, ktorej siatka nie ma, a tekst uciekal poza
-       ekran bez zawijania (pasek srednich nie ma przewijania w bok jak
-       tabele). "1 / -1" = pelna dostepna szerokosc, ile by kolumn nie bylo. */
-    .metric-rekord { grid-column: 1 / -1; }
+    /* Domyslne minmax(196px,1fr) mieszczlo tylko 1 kolumne na waskim
+       telefonie (uzytkownik chcial 2 obok siebie) - wezsze minimum
+       pozwala auto-fit wygenerowac realnie 2 kolumny zamiast 1. Dzieki
+       temu "span 2" na Rekordzie sezonu znow oznacza cos realnego
+       (pelna szerokosc obu waskich kolumn), bez osobnej reguly na sile. */
+    .compare { grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); }
+    .metric { padding: 11px 10px 12px; }
+    .metric .sez { min-width: 56px; font-size: 9px; }
+    .metric .row.now .val { font-size: 20px; }
+    .metric .delta { font-size: 10.5px; }
+    .metric-rekord .row.now .val, .metric-rekord .row.was .val { font-size: 13px !important; }
+    .metric-rekord .rekord-wyjasnienie { font-size: 10px; }
   }
   button {
     font-family: var(--label); font-size: 13px; font-weight: 500;
