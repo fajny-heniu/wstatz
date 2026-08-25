@@ -1172,6 +1172,13 @@ function renderCharts() {
        (nowsze liczą się bardziej, półokres ${POLOKRES_KOLEJEK} kolejek). <b>100%</b> to
        dokładnie średnia całego sezonu, <b>113%</b> znaczy „ostatnio lepiej niż
        przeciętnie w tym sezonie".</p>`
+    : aktywny.id === "punkty"
+    ? `<p class="chart-wyjasnienie">Zielona linia („projekcja") to prosta ekstrapolacja
+       bieżącego tempa punktowego na cały sezon: punkty zdobyte do tej pory ÷ liczba
+       rozegranych kolejek × 34. To <b>nie jest prognoza</b> uwzględniająca siłę
+       kolejnych rywali — tylko założenie, że dotychczasowe tempo się utrzyma. Linia
+       zaczyna się dokładnie tam, gdzie kończy się prawdziwy wynik — dalej w prawo
+       to już czysta ekstrapolacja, nie fakt.</p>`
     : "";
 
   const kolumny = sezony.map(s => {
