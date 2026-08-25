@@ -1174,8 +1174,22 @@ const DEFINICJE_WYKRESOW = [
   { id: "pozycja", etykieta: "Pozycja w tabeli", fn: svgWykresPozycji },
   { id: "xg", etykieta: "xG per kolejka", fn: svgWykresXG },
   { id: "gole-xg", etykieta: "Gole vs xG", fn: svgWykresGoleXG },
-  { id: "punkty", etykieta: "Punkty vs możliwe", fn: svgWykresPunkty },
-  { id: "trend", etykieta: "Trend", fn: svgWykresTrend },
+  { id: "punkty", etykieta: "Punkty vs możliwe", fn: svgWykresPunkty,
+    wyjasnienie: `Zielona przerywana linia to <b>projekcja</b> punktów
+      na koniec sezonu — prosta ekstrapolacja z obecnego tempa
+      (punkty zdobyte ÷ liczba rozegranych kolejek × 34). To
+      <b>nie jest prognoza</b> uwzględniająca siłę kolejnych rywali —
+      tylko założenie, że dotychczasowe tempo się utrzyma. Zaczyna się
+      dokładnie tam, gdzie kończy się prawdziwa linia — to jest „teraz",
+      dalej w prawo to już tylko wyliczenie, nie fakt. Sprawdzona na
+      sezonie 2025/26: policzona w połowie sezonu dała wynik z błędem
+      <b>2 punktów</b> względem tego, co faktycznie wydarzyło się na koniec.` },
+  { id: "trend", etykieta: "Trend", fn: svgWykresTrend,
+    wyjasnienie: `Ile procent własnej średniej sezonowej reprezentuje
+      bieżąca forma Widzewa — każdy mecz waży tym mniej, im dawniej się
+      odbył (nowsze liczą się bardziej, półokres ${POLOKRES_KOLEJEK}
+      kolejek). <b>100%</b> to dokładnie średnia całego sezonu,
+      <b>113%</b> znaczy „ostatnio lepiej niż przeciętnie w tym sezonie".` },
 ];
 let aktywnyWykres = "pozycja";
 
@@ -1186,19 +1200,8 @@ function renderCharts() {
   const zakladki = DEFINICJE_WYKRESOW.map(d => `<button class="chart-tab"
     data-wykres="${d.id}" aria-pressed="${d.id === aktywny.id}">${d.etykieta}</button>`).join("");
 
-  const wyjasnienie = aktywny.id === "trend"
-    ? `<p class="chart-wyjasnienie">Ile procent własnej średniej sezonowej reprezentuje
-       bieżąca forma Widzewa — każdy mecz waży tym mniej, im dawniej się odbył
-       (nowsze liczą się bardziej, półokres ${POLOKRES_KOLEJEK} kolejek). <b>100%</b> to
-       dokładnie średnia całego sezonu, <b>113%</b> znaczy „ostatnio lepiej niż
-       przeciętnie w tym sezonie".</p>`
-    : aktywny.id === "punkty"
-    ? `<p class="chart-wyjasnienie">Zielona linia („projekcja") to prosta ekstrapolacja
-       bieżącego tempa punktowego na cały sezon: punkty zdobyte do tej pory ÷ liczba
-       rozegranych kolejek × 34. To <b>nie jest prognoza</b> uwzględniająca siłę
-       kolejnych rywali — tylko założenie, że dotychczasowe tempo się utrzyma. Linia
-       zaczyna się dokładnie tam, gdzie kończy się prawdziwy wynik — dalej w prawo
-       to już czysta ekstrapolacja, nie fakt.</p>`
+  const wyjasnienie = aktywny.wyjasnienie
+    ? `<p class="chart-wyjasnienie">${aktywny.wyjasnienie}</p>`
     : "";
 
   const kolumny = sezony.map(s => {
