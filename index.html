@@ -126,6 +126,20 @@
   .metric .row.was .val.up { color: var(--win); }
   .metric .row.was .val.down { color: var(--loss); }
 
+  .metric-rekord { grid-column: span 2; }
+  .metric-rekord .rekord-wyjasnienie {
+    font-size: 11px; line-height: 1.4; color: var(--muted);
+    margin: 0 0 10px; max-width: 480px;
+  }
+  .metric-rekord .row.now .val, .metric-rekord .row.was .val {
+    font-size: 14px !important; font-weight: 600; color: var(--ink);
+    white-space: normal; line-height: 1.4; font-family: var(--label);
+  }
+  .metric-rekord .rekord-diff {
+    font-family: var(--data); font-weight: 700; font-style: normal;
+    color: var(--oxblood); margin-left: 4px;
+  }
+
   .controls { max-width: 1240px; margin: 0 auto 14px; display: flex;
     flex-wrap: wrap; gap: 10px; align-items: center; }
   .controls .hint { flex: 1 1 100%; }
@@ -647,6 +661,55 @@ function stopka() {
     ` Puste pole oznacza brak danych w źródle, nie zero.`;
 }
 
+// Rekord sezonu: najlepszy wystep wsrod W/R (P wykluczone - tak zdecydowal
+// uzytkownik, "na pewno wygrana lub remis"). Ranking po xG-xGA - perspektywa
+// ANALITYCZNA ("kto gral lepiej"), nie kibicowska ("co bardziej ucieszylo") -
+// czasem wygrana z gorszym xG-xGA przegrywa z remisem, ktory mial lepsze
+// liczby (sprawdzone na zywo: k1 2026/27 remis z Motorem +1.16 > k3 wygrana
+// z Jagiellonia +0.01). Remisy w tej wartosci rozstrzyga wyzsza liczba goli
+// lacznie w meczu ("remis golowy" wygrywa remis bezbramkowy).
+function rekordSezonu(sezon) {
+  const kandydaci = DANE.sezony[sezon].mecze.filter(m =>
+    (m.rezultat === "W" || m.rezultat === "R") && m.widzew_xg !== null && m.rywal_xg !== null);
+  if (!kandydaci.length) return null;
+
+  function goleLacznie(m) {
+    const czesci = m.wynik.split(":").map(Number);
+    return czesci[0] + czesci[1];
+  }
+
+  return [...kandydaci].sort((a, b) => {
+    const diffA = a.widzew_xg - a.rywal_xg, diffB = b.widzew_xg - b.rywal_xg;
+    if (Math.abs(diffA - diffB) > 0.001) return diffB - diffA;
+    return goleLacznie(b) - goleLacznie(a);
+  })[0];
+}
+
+function boxRekord() {
+  const t = rekordSezonu(teraz);
+  const p = wczesniej ? rekordSezonu(wczesniej) : null;
+
+  function wart(m) {
+    if (!m) return `<span class="val">–</span>`;
+    const diff = m.widzew_xg - m.rywal_xg;
+    const znak = diff > 0 ? "+" : "";
+    return `<span class="val" title="k${m.kolejka}: ${m.gospodarz} ${m.wynik} ${m.gosc}">
+      ${m.gospodarz} ${m.wynik} ${m.gosc}
+      <i class="rekord-diff">${znak}${diff.toFixed(2)}</i></span>`;
+  }
+
+  const drugi = wczesniej
+    ? `<div class="row was"><span class="sez">${pelny(wczesniej)}</span>${wart(p)}</div>`
+    : "";
+  return `<div class="metric metric-rekord">
+    <b>Rekord sezonu</b>
+    <p class="rekord-wyjasnienie">Najlepszy występ wśród wygranych i remisów,
+      liczony jako xG − xGA (nie porażki, nie sam wynik) — remisy rozstrzyga
+      wyższa liczba goli łącznie.</p>
+    <div class="row now"><span class="sez">${pelny(teraz)}</span>${wart(t)}</div>
+    ${drugi}</div>`;
+}
+
 function compare() {
   const el = document.getElementById("compare");
   const a = DANE.sezony[teraz].srednie;
@@ -692,7 +755,8 @@ function compare() {
       box(nazwa, a["widzew_" + k], b ? b["widzew_" + k] : null, d)).join("") +
     box("Punkty / mecz", punktyNaMecz(teraz),
         wczesniej ? punktyNaMecz(wczesniej) : null, 2) +
-    boxNadwyzka();
+    boxNadwyzka() +
+    boxRekord();
 }
 
 function wiersz(m) {
