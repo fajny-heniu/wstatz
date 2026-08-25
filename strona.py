@@ -291,6 +291,12 @@ SZABLON = """<!DOCTYPE html>
   .chart-legenda .lg-strz { color: var(--muted-3); }
   @media (max-width: 860px) {
     .chart-kolumny { grid-template-columns: 1fr; }
+    /* "span 2" zaklada co najmniej 2 kolumny w siatce compare - na waskim
+       telefonie auto-fit generuje tylko jedna, wiec span 2 probowal
+       zarezerwowac szerokosc, ktorej siatka nie ma, a tekst uciekal poza
+       ekran bez zawijania (pasek srednich nie ma przewijania w bok jak
+       tabele). "1 / -1" = pelna dostepna szerokosc, ile by kolumn nie bylo. */
+    .metric-rekord { grid-column: 1 / -1; }
   }
   button {
     font-family: var(--label); font-size: 13px; font-weight: 500;
