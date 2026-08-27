@@ -191,11 +191,12 @@ SZABLON = """<!DOCTYPE html>
     color: var(--muted); font-weight: 600;
   }
   .forma .boxes { display: flex; gap: 6px; }
-  .forma .badge {
-    width: 34px; height: 34px; display: grid; place-items: center;
-    font-family: var(--display); font-size: 16px; font-weight: 600;
+  .badge {
+    display: grid; place-items: center;
+    font-family: var(--display); font-weight: 600;
     color: #fff; letter-spacing: .02em;
   }
+  .forma .badge { width: 34px; height: 34px; font-size: 16px; }
   /* te same kody co w tabeli (rezultat: W/R/P) - jeden alfabet w calej stronie */
   .badge.W { background: var(--win); }
   .badge.P { background: var(--loss); }
@@ -381,7 +382,7 @@ SZABLON = """<!DOCTYPE html>
   .h2h-brak { font-size: 12px; color: var(--muted); font-style: italic; margin: 0; }
   .h2h-lista { display: flex; flex-direction: column; gap: 5px; }
   .h2h-linia { display: flex; align-items: baseline; gap: 9px; font-size: clamp(11.5px, 1.5vw + 6px, 13px); }
-  .h2h-linia .badge { flex: none; }
+  .h2h-linia .badge { flex: none; width: 22px; height: 22px; font-size: 12px; }
   .h2h-sezon {
     font-family: var(--data); color: var(--muted); flex: none; width: 82px;
   }
