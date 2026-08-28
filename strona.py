@@ -301,6 +301,8 @@ SZABLON = """<!DOCTYPE html>
   .seria-xg { fill: none; stroke: var(--oxblood); stroke-width: 1.6; stroke-dasharray: 4 3; }
   .seria-strz { fill: none; stroke: var(--muted); stroke-width: 1.6; stroke-dasharray: 1 3; }
   .seria-projekcja { fill: none; stroke: var(--win); stroke-width: 1.6; stroke-dasharray: 6 3; }
+  .seria-archiwum { fill: none; stroke: var(--faint); stroke-width: 1.3; opacity: .8; }
+  .chart-legenda .lg-archiwum { color: var(--muted-2); }
   .etykieta-projekcja { fill: var(--win); font-weight: 700; }
   .chart-legenda .lg-projekcja { color: var(--win); }
   .kropka { fill: var(--panel); stroke: var(--signal); stroke-width: 1.6; }
@@ -1178,6 +1180,21 @@ function punktySkumulowane(sezon) {
     .sort((a, b) => a.k - b.k);
 }
 
+// Archiwum nie przechodzi przez narastajaco() w zbuduj.py (sluzy tylko do
+// H2H, nie do pelnej analizy) - punkty_do tam nie istnieje, liczymy wprost
+// z rezultat na biezaco, tak samo jak zrobilby to narastajaco() dla sezonow
+// aktywnych.
+function punktySkumulowaneArchiwum(sezon) {
+  const mecze = DANE.archiwum[sezon].mecze
+    .filter(m => m.rezultat)
+    .sort((a, b) => a.kolejka - b.kolejka);
+  let suma = 0;
+  return mecze.map(m => {
+    suma += m.rezultat === "W" ? 3 : m.rezultat === "R" ? 1 : 0;
+    return { k: m.kolejka, pkt: suma };
+  });
+}
+
 function svgWykresPunkty(sezon) {
   const dane = punktySkumulowane(sezon);
   if (!dane.length) {
@@ -1232,6 +1249,56 @@ function svgWykresPunkty(sezon) {
   <p class="chart-legenda"><span class="lg-gole">— punkty</span><span class="lg-xg">┄ maksimum (3×k)</span>
     ${linProjekcja ? `<span class="lg-projekcja">╌ projekcja (${projekcjaKoncowa} pkt)</span>` : ""}
     <span style="margin-left:auto">tempo: ${tempo}%</span></p>`;
+}
+
+// Tempo punktowe na tle sezonow archiwalnych - archiwum jako cienkie,
+// jednolicie szare linie w tle (bez rozroznienia ktory to konkretnie rok -
+// swiadomy kompromis, zeby nie robic chaosu z kilkoma pelnymi kolorami
+// naraz), biezacy sezon jako gruba czerwona linia na wierzchu. Archiwum
+// ma tylko wyniki, nie xG - to jest jedyny czysto punktowy wykres, ktory
+// moze z niego korzystac.
+function svgWykresArchiwum(sezon) {
+  const dane = punktySkumulowane(sezon);
+  if (!dane.length) {
+    return `<div class="pusto">Brak jeszcze rozegranych meczów w tym sezonie.</div>`;
+  }
+  const { l: padL, r: padR, t: padT, b: padB } = CHART_PAD;
+  const W = CHART_W, H = CHART_H, maxK = CHART_MAXK;
+  const maxY = maxK * 3;
+  const krok = 20;
+  const xOf = k => padL + (k - 1) / (maxK - 1) * (W - padL - padR);
+  const yOf = v => padT + (1 - v / maxY) * (H - padT - padB);
+
+  let siatka = "";
+  for (let y = 0; y <= maxY + 0.001; y += krok) {
+    const py = yOf(y);
+    siatka += `<line class="grid-line" x1="${padL}" y1="${py}" x2="${W - padR}" y2="${py}"/>`;
+    siatka += `<text class="grid-label" x="2" y="${py + 3}">${Math.round(y)}</text>`;
+  }
+  let osX = "";
+  for (let k = 1; k <= maxK; k += 5) {
+    osX += `<text class="grid-label" x="${xOf(k)}" y="${H - 6}" text-anchor="middle">${k}</text>`;
+  }
+
+  const archiwalne = DANE.archiwum ? Object.keys(DANE.archiwum).sort() : [];
+  const liniiArchiwum = archiwalne.map(as => {
+    const d = punktySkumulowaneArchiwum(as);
+    if (!d.length) return "";
+    return `<polyline class="seria-archiwum" points="${d.map(x => `${xOf(x.k)},${yOf(x.pkt)}`).join(" ")}"/>`;
+  }).join("");
+
+  const punkty = dane.map(d => `${xOf(d.k)},${yOf(d.pkt)}`).join(" ");
+  const koniec = dane[dane.length - 1];
+  const etykieta = `<text class="etykieta" x="${Math.min(xOf(koniec.k) + 8, W - 30)}" y="${yOf(koniec.pkt) + 4}">${koniec.pkt}</text>`;
+
+  return `<svg viewBox="0 0 ${W} ${H}">
+    ${siatka}${osX}
+    ${liniiArchiwum}
+    <polyline class="seria" points="${punkty}"/>
+    ${etykieta}
+  </svg>
+  <p class="chart-legenda"><span class="lg-gole">— ${pelny(sezon)}</span>
+    ${archiwalne.length ? `<span class="lg-archiwum">┄ sezony archiwalne (${archiwalne.length})</span>` : '<span class="lg-archiwum">brak danych archiwalnych</span>'}</p>`;
 }
 
 // Trend z wygaszaniem wykladniczym (polokres 8 kolejek - kazdy kolejny
@@ -1355,6 +1422,14 @@ const DEFINICJE_WYKRESOW = [
       odbył (nowsze liczą się bardziej, półokres ${POLOKRES_KOLEJEK}
       kolejek). <b>100%</b> to dokładnie średnia całego sezonu,
       <b>113%</b> znaczy „ostatnio lepiej niż przeciętnie w tym sezonie".` },
+  { id: "archiwum", etykieta: "Na tle historii", fn: svgWykresArchiwum,
+    wyjasnienie: `Szare linie to <b>trzy poprzednie sezony</b>
+      (2022–2024) — celowo bez rozróżniania, który to konkretnie rok,
+      żeby nie robić chaosu z kilkoma pełnymi kolorami naraz. Chodzi
+      o „typowe pasmo z przeszłości", nie o to, który dokładnie sezon
+      był najlepszy. Czerwona linia to bieżący sezon — powyżej szarych
+      linii oznacza lepszy start niż zwykle, poniżej — gorszy. Archiwum
+      ma tylko wyniki, nie xG, więc to jedyny czysto punktowy wykres.` },
 ];
 let aktywnyWykres = "pozycja";
 
