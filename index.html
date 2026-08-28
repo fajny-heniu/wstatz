@@ -271,7 +271,7 @@
     padding: 9px 14px; background: var(--oxblood); color: #fff;
   }
   .chart h3 span { float: right; opacity: .75; font-family: var(--data); letter-spacing: 0; }
-  .chart .wrap { padding: 10px 12px 6px; }
+  .chart .wrap { padding: 10px 12px 6px; position: relative; }
   .chart svg { width: 100%; height: auto; display: block; }
   .chart .pusto { padding: 20px 14px; font-size: 12.5px; color: var(--muted); }
   .grid-line { stroke: var(--chart-grid); stroke-width: 1; }
@@ -293,6 +293,23 @@
   .etykieta-strz { fill: var(--muted); opacity: .9; }
   .rekord-gwiazdka { fill: var(--signal); font-size: 14px; }
   .rekord-gwiazdka-txt { color: var(--signal); font-weight: 700; }
+
+  .hover-linia {
+    stroke: var(--muted-2); stroke-width: 1; stroke-dasharray: 3 3;
+    display: none; pointer-events: none;
+  }
+  .hover-kropka {
+    fill: var(--ink); stroke: var(--panel); stroke-width: 2;
+    display: none; pointer-events: none;
+  }
+  html[data-theme="dark"] .hover-kropka { fill: var(--ink); stroke: var(--panel); }
+  .wykres-tooltip {
+    position: absolute; top: 6px;
+    background: var(--oxblood); color: #fff;
+    font-family: var(--label); font-size: 11.5px; font-weight: 600;
+    padding: 4px 8px; border-radius: 3px; white-space: nowrap;
+    display: none; pointer-events: none; z-index: 2;
+  }
   .rekord-znacznik { color: var(--signal); margin-left: 5px; font-size: 12px; }
   .chart-legenda {
     margin: 2px 14px 10px; font-size: 10.5px; color: var(--muted);
@@ -1002,7 +1019,7 @@ const CHART_W = 520, CHART_H = 220;
 const CHART_PAD = { l: 26, r: 16, t: 16, b: 24 };
 const CHART_MAXK = 34;
 
-function svgWykresPozycji(sezon) {
+function svgWykresPozycji(sezon, kolumna) {
   const dane = pozycjeSeria(sezon);
   if (!dane.length) {
     return `<div class="pusto">Brak jeszcze danych o pozycji w tabeli dla tego sezonu.</div>`;
@@ -1015,6 +1032,7 @@ function svgWykresPozycji(sezon) {
   const maxP = Math.max(...pozycje, 6);
   const xOf = k => padL + (k - 1) / (maxK - 1) * (W - padL - padR);
   const yOf = p => padT + (p - minP) / (maxP - minP) * (H - padT - padB);
+  ustawHoverDane(kolumna, dane, "pozycja", d => yOf(d.p));
 
   const krokP = Math.max(1, Math.round(maxP / 6));
   let siatka = "";
@@ -1039,7 +1057,7 @@ function svgWykresPozycji(sezon) {
   return `<svg viewBox="0 0 ${W} ${H}">
     ${siatka}${osX}
     <polyline class="seria" points="${punkty}"/>
-    ${kropki}${etykieta}
+    ${kropki}${etykieta}${nakladkaHover()}
   </svg>`;
 }
 
@@ -1051,7 +1069,7 @@ function xgSeria(sezon) {
     .sort((a, b) => a.k - b.k);
 }
 
-function svgWykresXG(sezon) {
+function svgWykresXG(sezon, kolumna) {
   const dane = xgSeria(sezon);
   if (!dane.length) {
     return `<div class="pusto">Brak jeszcze rozegranych meczów w tym sezonie.</div>`;
@@ -1062,6 +1080,7 @@ function svgWykresXG(sezon) {
   const krok = maxY > 3 ? 1 : 0.5;
   const xOf = k => padL + (k - 1) / (maxK - 1) * (W - padL - padR);
   const yOf = v => padT + (1 - v / maxY) * (H - padT - padB);
+  ustawHoverDane(kolumna, dane, "xg", d => yOf(d.xg));
 
   let siatka = "";
   for (let y = 0; y <= maxY + 0.001; y += krok) {
@@ -1093,7 +1112,7 @@ function svgWykresXG(sezon) {
   return `<svg viewBox="0 0 ${W} ${H}">
     ${siatka}${osX}
     <polyline class="seria" points="${punkty}"/>
-    ${kropki}${etykieta}${gwiazdka}
+    ${kropki}${etykieta}${gwiazdka}${nakladkaHover()}
   </svg>`;
 }
 
@@ -1112,7 +1131,7 @@ function goleXgSkumulowane(sezon) {
   });
 }
 
-function svgWykresGoleXG(sezon) {
+function svgWykresGoleXG(sezon, kolumna) {
   const dane = goleXgSkumulowane(sezon);
   if (!dane.length) {
     return `<div class="pusto">Brak jeszcze rozegranych meczów w tym sezonie.</div>`;
@@ -1123,6 +1142,7 @@ function svgWykresGoleXG(sezon) {
   const krok = maxY > 20 ? 10 : maxY > 8 ? 5 : 2;
   const xOf = k => padL + (k - 1) / (maxK - 1) * (W - padL - padR);
   const yOf = v => padT + (1 - v / maxY) * (H - padT - padB);
+  ustawHoverDane(kolumna, dane, "gole-xg", d => yOf(d.gole));
 
   let siatka = "";
   for (let y = 0; y <= maxY + 0.001; y += krok) {
@@ -1145,7 +1165,7 @@ function svgWykresGoleXG(sezon) {
     ${siatka}${osX}
     <polyline class="seria-xg" points="${linXg}"/>
     <polyline class="seria" points="${linGole}"/>
-    ${etGole}${etXg}
+    ${etGole}${etXg}${nakladkaHover()}
   </svg>
   <p class="chart-legenda"><span class="lg-gole">— gole</span><span class="lg-xg">┄ xG</span></p>`;
 }
@@ -1175,7 +1195,7 @@ function punktySkumulowaneArchiwum(sezon) {
   });
 }
 
-function svgWykresPunkty(sezon) {
+function svgWykresPunkty(sezon, kolumna) {
   const dane = punktySkumulowane(sezon);
   if (!dane.length) {
     return `<div class="pusto">Brak jeszcze rozegranych meczów w tym sezonie.</div>`;
@@ -1186,6 +1206,7 @@ function svgWykresPunkty(sezon) {
   const krok = 20;
   const xOf = k => padL + (k - 1) / (maxK - 1) * (W - padL - padR);
   const yOf = v => padT + (1 - v / maxY) * (H - padT - padB);
+  ustawHoverDane(kolumna, dane, "punkty", d => yOf(d.pkt));
 
   let siatka = "";
   for (let y = 0; y <= maxY + 0.001; y += krok) {
@@ -1224,7 +1245,7 @@ function svgWykresPunkty(sezon) {
     <polyline class="seria-xg" points="${linMaks}"/>
     ${linProjekcja && `<polyline class="seria-projekcja" points="${linProjekcja}"/>`}
     <polyline class="seria" points="${linPkt}"/>
-    ${etPkt}${etMaks}${etProjekcja}
+    ${etPkt}${etMaks}${etProjekcja}${nakladkaHover()}
   </svg>
   <p class="chart-legenda"><span class="lg-gole">— punkty</span><span class="lg-xg">┄ maksimum (3×k)</span>
     ${linProjekcja ? `<span class="lg-projekcja">╌ projekcja (${projekcjaKoncowa} pkt)</span>` : ""}
@@ -1237,7 +1258,7 @@ function svgWykresPunkty(sezon) {
 // naraz), biezacy sezon jako gruba czerwona linia na wierzchu. Archiwum
 // ma tylko wyniki, nie xG - to jest jedyny czysto punktowy wykres, ktory
 // moze z niego korzystac.
-function svgWykresArchiwum(sezon) {
+function svgWykresArchiwum(sezon, kolumna) {
   const dane = punktySkumulowane(sezon);
   if (!dane.length) {
     return `<div class="pusto">Brak jeszcze rozegranych meczów w tym sezonie.</div>`;
@@ -1248,6 +1269,7 @@ function svgWykresArchiwum(sezon) {
   const krok = 20;
   const xOf = k => padL + (k - 1) / (maxK - 1) * (W - padL - padR);
   const yOf = v => padT + (1 - v / maxY) * (H - padT - padB);
+  ustawHoverDane(kolumna, dane, "archiwum", d => yOf(d.pkt));
 
   let siatka = "";
   for (let y = 0; y <= maxY + 0.001; y += krok) {
@@ -1275,7 +1297,7 @@ function svgWykresArchiwum(sezon) {
     ${siatka}${osX}
     ${liniiArchiwum}
     <polyline class="seria" points="${punkty}"/>
-    ${etykieta}
+    ${etykieta}${nakladkaHover()}
   </svg>
   <p class="chart-legenda"><span class="lg-gole">— ${pelny(sezon)}</span>
     ${archiwalne.length ? `<span class="lg-archiwum">┄ sezony archiwalne (${archiwalne.length})</span>` : '<span class="lg-archiwum">brak danych archiwalnych</span>'}</p>`;
@@ -1315,7 +1337,7 @@ function trendWygaszony(sezon) {
   });
 }
 
-function svgWykresTrend(sezon) {
+function svgWykresTrend(sezon, kolumna) {
   const dane = trendWygaszony(sezon);
   if (!dane.length) {
     return `<div class="pusto">Brak jeszcze rozegranych meczów w tym sezonie.</div>`;
@@ -1334,7 +1356,6 @@ function svgWykresTrend(sezon) {
     strz: d.strz / srStrz * 100,
     xga: d.xga / srXga * 100,
   }));
-
   const { l: padL, r: padR, t: padT, b: padB } = CHART_PAD;
   const W = CHART_W, H = CHART_H, maxK = CHART_MAXK;
   const wszystkie = seria.flatMap(s => [s.pkt, s.strz, s.xga]);
@@ -1343,6 +1364,7 @@ function svgWykresTrend(sezon) {
   const krok = 25;
   const xOf = k => padL + (k - 1) / (maxK - 1) * (W - padL - padR);
   const yOf = v => padT + (1 - (v - minY) / (maxY - minY)) * (H - padT - padB);
+  ustawHoverDane(kolumna, seria, "trend", d => yOf(d.pkt));
 
   let siatka = "";
   for (let y = Math.ceil(minY / krok) * krok; y <= maxY + 0.001; y += krok) {
@@ -1368,7 +1390,7 @@ function svgWykresTrend(sezon) {
     <polyline class="seria-strz" points="${linia("strz")}"/>
     <polyline class="seria-xg" points="${linia("xga")}"/>
     <polyline class="seria" points="${linia("pkt")}"/>
-    ${etTxt("pkt", "")}${etTxt("strz", "etykieta-strz")}${etTxt("xga", "etykieta-xg")}
+    ${etTxt("pkt", "")}${etTxt("strz", "etykieta-strz")}${etTxt("xga", "etykieta-xg")}${nakladkaHover()}
   </svg>
   <p class="chart-legenda">
     <span class="lg-gole">— punkty</span>
@@ -1379,6 +1401,35 @@ function svgWykresTrend(sezon) {
 
 // Definicje wykresow w jednym miejscu - zakladki generuja sie z tej listy,
 // dodanie nowego wykresu w przyszlosci to jedna nowa linia tutaj.
+// Wspolny mechanizm "najedz/dotknij, zobacz wartosc" dla wszystkich
+// wykresow - jedna implementacja, nie szesc osobnych. Kazda funkcja
+// svgWykresX() po policzeniu "dane" zapisuje je tutaj (per kolumna: 0 lub
+// 1), a obsluga wskaznika/dotyku szuka najblizszej kolejki geometrycznie
+// (odwracajac ten sam wzor xOf, ktorego uzywa kazdy wykres) i pokazuje
+// dymek sformatowany wedlug typu aktywnego wykresu.
+const hoverDane = [null, null];
+function ustawHoverDane(kolumna, dane, typ, yOfGlowna) {
+  if (kolumna !== undefined) hoverDane[kolumna] = { dane, typ, yOfGlowna };
+}
+
+const HOVER_FORMAT = {
+  pozycja: d => `k${d.k} · ${d.p}. miejsce`,
+  xg: d => `k${d.k} · xG ${d.xg.toFixed(2)}`,
+  "gole-xg": d => `k${d.k} · ${d.gole} goli · xG ${d.xg.toFixed(2)}`,
+  punkty: d => `k${d.k} · ${d.pkt} pkt`,
+  trend: d => `k${d.k} · pkt ${Math.round(d.pkt)}% · strz ${Math.round(d.strz)}% · xGA ${Math.round(d.xga)}%`,
+  archiwum: d => `k${d.k} · ${d.pkt} pkt`,
+};
+
+// Nakladka do rysowania linii/kropki na hover - te same wspolrzedne co
+// reszta wykresu, ale generowana raz i tylko przesuwana przez JS (szybsze
+// niz przerysowywanie calego SVG przy kazdym ruchu palca).
+function nakladkaHover() {
+  const { t: padT, b: padB } = CHART_PAD;
+  return `<line class="hover-linia" x1="0" y1="${padT}" x2="0" y2="${CHART_H - padB}"/>
+    <circle class="hover-kropka" cx="0" cy="0" r="4.5"/>`;
+}
+
 const DEFINICJE_WYKRESOW = [
   { id: "pozycja", etykieta: "Pozycja w tabeli", fn: svgWykresPozycji },
   { id: "xg", etykieta: "xG per kolejka", fn: svgWykresXG,
@@ -1414,6 +1465,7 @@ const DEFINICJE_WYKRESOW = [
 let aktywnyWykres = "pozycja";
 
 function renderCharts() {
+  hoverDane[0] = hoverDane[1] = null;
   const el = document.getElementById("charts");
   const aktywny = DEFINICJE_WYKRESOW.find(d => d.id === aktywnyWykres) || DEFINICJE_WYKRESOW[0];
 
@@ -1424,12 +1476,14 @@ function renderCharts() {
     ? `<p class="chart-wyjasnienie">${aktywny.wyjasnienie}</p>`
     : "";
 
-  const kolumny = sezony.map(s => {
+  const kolumny = sezony.map((s, i) => {
     const ost = pozycjeSeria(s).slice(-1)[0];
     const info = ost ? `${ost.p}. po k.${ost.k}` : "brak danych";
     return `<div class="chart">
       <h3>${pelny(s)}<span>${info}</span></h3>
-      <div class="wrap">${aktywny.fn(s)}</div>
+      <div class="wrap" data-kolumna="${i}">${aktywny.fn(s, i)}
+        <div class="wykres-tooltip" data-kolumna="${i}"></div>
+      </div>
     </div>`;
   }).join("");
 
@@ -1443,6 +1497,94 @@ document.getElementById("charts").addEventListener("click", e => {
   if (!tab) return;
   aktywnyWykres = tab.dataset.wykres;
   renderCharts();
+});
+
+// Najedz kursorem lub dotknij wykres, zobacz wartosc - jeden mechanizm dla
+// wszystkich szesciu zakladek, nie szesc osobnych. Znajduje najblizsza
+// kolejke geometrycznie (odwracajac ten sam wzor xOf, ktorego uzywaja
+// wszystkie wykresy), przesuwa gotowa juz linie/kropke w SVG (bez
+// przerysowywania calego wykresu - szybsze przy przeciaganiu palcem) i
+// ustawia tekst w dymku.
+function obslozHover(wrap, clientX) {
+  const kolumna = parseInt(wrap.dataset.kolumna, 10);
+  const info = hoverDane[kolumna];
+  const svg = wrap.querySelector("svg");
+  const tooltip = wrap.querySelector(".wykres-tooltip");
+  if (!info || !svg || !tooltip) return;
+
+  const rect = svg.getBoundingClientRect();
+  const { l: padL, r: padR } = CHART_PAD;
+  const maxK = CHART_MAXK;
+  const uPix = (clientX - rect.left) / rect.width;  // 0..1 wzgledem szerokosci SVG
+  const viewX = uPix * CHART_W;
+  let k = Math.round(1 + (viewX - padL) / (CHART_W - padL - padR) * (maxK - 1));
+  k = Math.max(1, Math.min(maxK, k));
+
+  // najblizszy dostepny punkt danych, nie tylko dokladne trafienie w k -
+  // niektore kolejki moga nie miec danych (mecz przelozony, zapowiedz)
+  let punkt = info.dane.find(d => d.k === k);
+  if (!punkt) {
+    punkt = info.dane.reduce((a, b) =>
+      Math.abs(b.k - k) < Math.abs(a.k - k) ? b : a, info.dane[0]);
+  }
+
+  const px = padL + (punkt.k - 1) / (maxK - 1) * (CHART_W - padL - padR);
+  const py = info.yOfGlowna(punkt);
+  const linia = svg.querySelector(".hover-linia");
+  const kropka = svg.querySelector(".hover-kropka");
+  linia.setAttribute("x1", px); linia.setAttribute("x2", px);
+  linia.style.display = "block";
+  kropka.setAttribute("cx", px); kropka.setAttribute("cy", py);
+  kropka.style.display = "block";
+
+  tooltip.textContent = (HOVER_FORMAT[info.typ] || (d => `k${d.k}`))(punkt);
+  tooltip.style.display = "block";
+  // Pozycja dymka w px wzgledem .wrap (nie tylko SVG - SVG moze miec inny
+  // offset niz wrap przez padding), z pomiarem realnej szerokosci dymka i
+  // twardym ograniczeniem, zeby nigdy nie wystawal poza krawedz wykresu.
+  const svgRect = svg.getBoundingClientRect();
+  const wrapRect = wrap.getBoundingClientRect();
+  const pxWzgledemWrap = (svgRect.left - wrapRect.left) + uPix * svgRect.width;
+  const szerokoscTt = tooltip.offsetWidth;
+  let lewo = pxWzgledemWrap - szerokoscTt / 2;
+  lewo = Math.max(4, Math.min(lewo, wrapRect.width - szerokoscTt - 4));
+  tooltip.style.left = `${lewo}px`;
+}
+
+function ukryjHover(wrap) {
+  const svg = wrap.querySelector("svg");
+  const tooltip = wrap.querySelector(".wykres-tooltip");
+  if (svg) {
+    const linia = svg.querySelector(".hover-linia");
+    const kropka = svg.querySelector(".hover-kropka");
+    if (linia) linia.style.display = "none";
+    if (kropka) kropka.style.display = "none";
+  }
+  if (tooltip) tooltip.style.display = "none";
+}
+
+const panelWykresow = document.getElementById("charts");
+panelWykresow.addEventListener("mousemove", e => {
+  const wrap = e.target.closest(".wrap");
+  if (wrap) obslozHover(wrap, e.clientX);
+});
+panelWykresow.addEventListener("mouseleave", e => {
+  panelWykresow.querySelectorAll(".wrap").forEach(ukryjHover);
+}, true);
+panelWykresow.addEventListener("touchstart", e => {
+  const wrap = e.target.closest(".wrap");
+  if (!wrap) return;
+  e.preventDefault();  // wewnatrz wykresu dotyk to "przesuwaj po czasie", nie scroll strony
+  obslozHover(wrap, e.touches[0].clientX);
+}, { passive: false });
+panelWykresow.addEventListener("touchmove", e => {
+  const wrap = e.target.closest(".wrap");
+  if (!wrap) return;
+  e.preventDefault();
+  obslozHover(wrap, e.touches[0].clientX);
+}, { passive: false });
+panelWykresow.addEventListener("touchend", e => {
+  panelWykresow.querySelectorAll(".wrap").forEach(ukryjHover);
 });
 
 document.getElementById("mode").addEventListener("click", e => {
