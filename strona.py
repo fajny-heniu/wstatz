@@ -159,6 +159,10 @@ SZABLON = """<!DOCTYPE html>
     font-family: var(--data); font-weight: 700; font-style: normal;
     color: var(--oxblood); margin-left: 4px;
   }
+  .metric-rekord .rekord-k {
+    font-family: var(--data); font-style: normal; font-weight: 600;
+    color: var(--muted); margin-right: 2px;
+  }
 
   .controls { max-width: 1240px; margin: 0 auto 14px; display: flex;
     flex-wrap: wrap; gap: 10px; align-items: center; }
@@ -283,6 +287,8 @@ SZABLON = """<!DOCTYPE html>
     font-size: 11px; font-weight: 700; }
   .etykieta-xg { fill: var(--oxblood); opacity: .8; }
   .etykieta-strz { fill: var(--muted); opacity: .9; }
+  .rekord-gwiazdka { fill: var(--signal); font-size: 14px; }
+  .rekord-znacznik { color: var(--signal); margin-left: 5px; font-size: 12px; }
   .chart-legenda {
     margin: 2px 14px 10px; font-size: 10.5px; color: var(--muted);
     display: flex; gap: 12px;
@@ -727,7 +733,7 @@ function boxRekord() {
     const diff = m.widzew_xg - m.rywal_xg;
     const znak = diff > 0 ? "+" : "";
     return `<span class="val" title="k${m.kolejka}: ${m.gospodarz} ${m.wynik} ${m.gosc}">
-      ${m.gospodarz} ${m.wynik} ${m.gosc}
+      <i class="rekord-k">k${m.kolejka}</i> ${m.gospodarz} ${m.wynik} ${m.gosc}
       <i class="rekord-diff">${znak}${diff.toFixed(2)}</i></span>`;
   }
 
@@ -798,7 +804,7 @@ function compare() {
     boxRekord();
 }
 
-function wiersz(m) {
+function wiersz(m, sezon) {
   const gospodarz = m.gospodarz === DANE.druzyna
     ? `<span class="w">${m.gospodarz}</span>` : m.gospodarz;
   const gosc = m.gosc === DANE.druzyna
@@ -809,10 +815,16 @@ function wiersz(m) {
     ? '<span class="none">–</span>' : v;
   const otwarty = h2hOtwarte.has(m.fixture_id);
   const strzalkaH2H = `<span class="h2h-toggle">${otwarty ? "▾" : "▸"}</span>`;
+  // Gwiazdka przy meczu, ktory jest Rekordem sezonu (xG-xGA wsrod W/R) -
+  // ten sam mecz co w pasku srednich i na wykresie xG.
+  const rekord = sezon && rekordSezonu(sezon);
+  const jestRekordem = rekord && rekord.fixture_id === m.fixture_id;
+  const gwiazdkaRekordu = jestRekordem
+    ? `<span class="rekord-znacznik" title="Rekord sezonu (xG − xGA)">★</span>` : "";
   return `<tr>
     <td class="gutter"><span class="tick ${m.rezultat || ""}" title="${m.rezultat || ""}"></span></td>
     <td class="k">${m.kolejka}</td>
-    <td class="match" data-fixture="${m.fixture_id}" title="Historia z tym rywalem">${strzalkaH2H}${gospodarz} – ${gosc}</td>
+    <td class="match" data-fixture="${m.fixture_id}" title="Historia z tym rywalem">${strzalkaH2H}${gospodarz} – ${gosc}${gwiazdkaRekordu}</td>
     <td class="score">${m.wynik || '<span class="wkrotce">wkrótce</span>'}</td>
     <td class="xg">${m.widzew_xg !== null
       ? `<span class="xg-widzew">${fmt(m.widzew_xg, 2)}</span>${xgBar}`
@@ -890,7 +902,7 @@ function tabela(sezon, wiersze) {
   const s = DANE.sezony[sezon];
   const sr = s.srednie;
   const body = wiersze.map(m => m
-    ? wiersz(m)
+    ? wiersz(m, sezon)
     : `<tr class="empty"><td colspan="${KOLUMNY.length}"></td></tr>`).join("");
   const bil = sr.bilans ? `${sr.bilans.W}-${sr.bilans.R}-${sr.bilans.P}` : "";
   const naglowki = KOLUMNY.map(c => naglowekKolumny(sezon, c)).join("");
@@ -1029,10 +1041,18 @@ function svgWykresXG(sezon) {
   const koniec = dane[dane.length - 1];
   const etykieta = `<text class="etykieta" x="${Math.min(xOf(koniec.k) + 8, W - 30)}" y="${yOf(koniec.xg) + 4}">${koniec.xg.toFixed(2)}</text>`;
 
+  // Gwiazdka nad kolejka, ktora jest Rekordem sezonu (xG-xGA, patrz boxRekord) -
+  // ten sam mecz co w pasku srednich, teraz tez widoczny na wykresie.
+  const rekord = rekordSezonu(sezon);
+  const punktRekordu = rekord && dane.find(d => d.k === rekord.kolejka);
+  const gwiazdka = punktRekordu
+    ? `<text class="rekord-gwiazdka" x="${xOf(punktRekordu.k)}" y="${yOf(punktRekordu.xg) - 10}" text-anchor="middle">★</text>`
+    : "";
+
   return `<svg viewBox="0 0 ${W} ${H}">
     ${siatka}${osX}
     <polyline class="seria" points="${punkty}"/>
-    ${kropki}${etykieta}
+    ${kropki}${etykieta}${gwiazdka}
   </svg>`;
 }
 
