@@ -147,16 +147,22 @@ SZABLON = """<!DOCTYPE html>
   .metric .row.was .val.down { color: var(--loss); }
 
   .metric-rekord { grid-column: span 2; }
-  .metric-stan .stan-linia {
-    font-family: var(--data); font-size: 15px; font-weight: 700;
-    color: var(--ink); margin: 4px 0 0; line-height: 1.5;
+  .stan-grid {
+    display: flex; flex-wrap: wrap; gap: 20px 28px; margin-top: 6px;
   }
-  .metric-stan .stan-gole { color: var(--oxblood); }
-  .metric-stan .stan-opis {
+  .stan-el { display: flex; flex-direction: column; gap: 2px; }
+  .stan-el .stan-etyk {
+    font-family: var(--label); font-size: 10px; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .stan-el .val {
+    font-family: var(--data); font-size: 25px; font-weight: 600;
+    color: var(--signal); line-height: 1.15;
+  }
+  .stan-el .stan-opis {
     font-family: var(--label); font-style: normal; font-size: 10px;
-    font-weight: 500; color: var(--muted); margin-left: 1px;
+    font-weight: 500; color: var(--muted); margin-left: 2px;
   }
-  .metric-stan .stan-pkt { color: var(--signal); }
   .metric-rekord .rekord-wyjasnienie {
     font-size: 11px; line-height: 1.4; color: var(--muted);
     margin: 0 0 10px; max-width: 480px;
@@ -318,6 +324,8 @@ SZABLON = """<!DOCTYPE html>
     .metric { padding: 11px 10px 12px; }
     .metric .sez { min-width: 56px; font-size: 9px; }
     .metric .row.now .val { font-size: 20px; }
+    .stan-el .val { font-size: 20px; }
+    .stan-grid { gap: 14px 20px; }
     .metric .delta { font-size: 10.5px; }
     .metric-rekord .row.now .val, .metric-rekord .row.was .val { font-size: 13px !important; }
     .metric-rekord .rekord-wyjasnienie { font-size: 10px; }
@@ -741,24 +749,30 @@ function rekordSezonu(sezon) {
 function boxStanSezonu() {
   const mecze = DANE.sezony[teraz].mecze.filter(m => m.rezultat);
   if (!mecze.length) {
-    return `<div class="metric metric-stan"><b>Stan sezonu</b>
-      <p class="stan-linia"><span class="val">–</span></p></div>`;
+    return `<div class="metric metric-stan metric-rekord"><b>Stan sezonu</b>
+      <p class="val">–</p></div>`;
   }
   const ostatni = mecze[0]; // mecze juz posortowane malejaco po kolejce
   const gole = mecze.reduce((acc, m) => ({
     str: acc.str + m.widzew_gole, strac: acc.strac + m.rywal_gole,
   }), { str: 0, strac: 0 });
-  const poz = ostatni.pozycja !== null ? `${ostatni.pozycja}. miejsce` : "pozycja n/d";
+  const poz = ostatni.pozycja !== null ? `${ostatni.pozycja}.` : "–";
 
-  return `<div class="metric metric-stan">
+  function el(etykieta, wartosc, opis = "") {
+    return `<div class="stan-el">
+      <span class="stan-etyk">${etykieta}</span>
+      <span class="val">${wartosc}</span>${opis ? `<i class="stan-opis">${opis}</i>` : ""}
+    </div>`;
+  }
+
+  return `<div class="metric metric-stan metric-rekord">
     <b>Stan sezonu</b>
-    <p class="stan-linia">
-      <span class="stan-k">K${ostatni.kolejka}</span> ·
-      ${poz} ·
-      <span class="stan-gole">${gole.str}:${gole.strac}</span>
-      <i class="stan-opis">(str.–strac.)</i> ·
-      <span class="stan-pkt">${ostatni.punkty_do} pkt</span>
-    </p>
+    <div class="stan-grid">
+      ${el("Kolejka", `K${ostatni.kolejka}`)}
+      ${el("Miejsce", poz)}
+      ${el("Bramki", `${gole.str}:${gole.strac}`, "str.–strac.")}
+      ${el("Punkty", ostatni.punkty_do)}
+    </div>
   </div>`;
 }
 
