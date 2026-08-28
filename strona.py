@@ -288,6 +288,7 @@ SZABLON = """<!DOCTYPE html>
   .etykieta-xg { fill: var(--oxblood); opacity: .8; }
   .etykieta-strz { fill: var(--muted); opacity: .9; }
   .rekord-gwiazdka { fill: var(--signal); font-size: 14px; }
+  .rekord-gwiazdka-txt { color: var(--signal); font-weight: 700; }
   .rekord-znacznik { color: var(--signal); margin-left: 5px; font-size: 12px; }
   .chart-legenda {
     margin: 2px 14px 10px; font-size: 10.5px; color: var(--muted);
@@ -1046,7 +1047,7 @@ function svgWykresXG(sezon) {
   const rekord = rekordSezonu(sezon);
   const punktRekordu = rekord && dane.find(d => d.k === rekord.kolejka);
   const gwiazdka = punktRekordu
-    ? `<text class="rekord-gwiazdka" x="${xOf(punktRekordu.k)}" y="${yOf(punktRekordu.xg) - 10}" text-anchor="middle">★</text>`
+    ? `<text class="rekord-gwiazdka" x="${xOf(punktRekordu.k)}" y="${Math.max(yOf(punktRekordu.xg) - 10, 16)}" text-anchor="middle">★</text>`
     : "";
 
   return `<svg viewBox="0 0 ${W} ${H}">
@@ -1275,7 +1276,10 @@ function svgWykresTrend(sezon) {
 // dodanie nowego wykresu w przyszlosci to jedna nowa linia tutaj.
 const DEFINICJE_WYKRESOW = [
   { id: "pozycja", etykieta: "Pozycja w tabeli", fn: svgWykresPozycji },
-  { id: "xg", etykieta: "xG per kolejka", fn: svgWykresXG },
+  { id: "xg", etykieta: "xG per kolejka", fn: svgWykresXG,
+    wyjasnienie: `<span class="rekord-gwiazdka-txt">★</span> oznacza
+      <b>Rekord sezonu</b> — mecz o najwyższej różnicy xG − xGA wśród
+      wygranych i remisów (ten sam mecz, co w pasku średnich).` },
   { id: "gole-xg", etykieta: "Gole vs xG", fn: svgWykresGoleXG },
   { id: "punkty", etykieta: "Punkty vs możliwe", fn: svgWykresPunkty,
     wyjasnienie: `Zielona przerywana linia to <b>projekcja</b> punktów
