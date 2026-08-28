@@ -127,6 +127,16 @@
   .metric .row.was .val.down { color: var(--loss); }
 
   .metric-rekord { grid-column: span 2; }
+  .metric-stan .stan-linia {
+    font-family: var(--data); font-size: 15px; font-weight: 700;
+    color: var(--ink); margin: 4px 0 0; line-height: 1.5;
+  }
+  .metric-stan .stan-gole { color: var(--oxblood); }
+  .metric-stan .stan-opis {
+    font-family: var(--label); font-style: normal; font-size: 10px;
+    font-weight: 500; color: var(--muted); margin-left: 1px;
+  }
+  .metric-stan .stan-pkt { color: var(--signal); }
   .metric-rekord .rekord-wyjasnienie {
     font-size: 11px; line-height: 1.4; color: var(--muted);
     margin: 0 0 10px; max-width: 480px;
@@ -705,6 +715,33 @@ function rekordSezonu(sezon) {
   })[0];
 }
 
+// Stan sezonu: czysta migawka biezacego momentu, bez porownania do
+// poprzedniego sezonu (w przeciwienstwie do reszty paska) - bo to jest
+// "gdzie jestesmy teraz", nie cos do zestawiania z inna cala runda.
+function boxStanSezonu() {
+  const mecze = DANE.sezony[teraz].mecze.filter(m => m.rezultat);
+  if (!mecze.length) {
+    return `<div class="metric metric-stan"><b>Stan sezonu</b>
+      <p class="stan-linia"><span class="val">–</span></p></div>`;
+  }
+  const ostatni = mecze[0]; // mecze juz posortowane malejaco po kolejce
+  const gole = mecze.reduce((acc, m) => ({
+    str: acc.str + m.widzew_gole, strac: acc.strac + m.rywal_gole,
+  }), { str: 0, strac: 0 });
+  const poz = ostatni.pozycja !== null ? `${ostatni.pozycja}. miejsce` : "pozycja n/d";
+
+  return `<div class="metric metric-stan">
+    <b>Stan sezonu</b>
+    <p class="stan-linia">
+      <span class="stan-k">K${ostatni.kolejka}</span> ·
+      ${poz} ·
+      <span class="stan-gole">${gole.str}:${gole.strac}</span>
+      <i class="stan-opis">(str.–strac.)</i> ·
+      <span class="stan-pkt">${ostatni.punkty_do} pkt</span>
+    </p>
+  </div>`;
+}
+
 function boxRekord() {
   const t = rekordSezonu(teraz);
   const p = wczesniej ? rekordSezonu(wczesniej) : null;
@@ -782,6 +819,7 @@ function compare() {
     box("Punkty / mecz", punktyNaMecz(teraz),
         wczesniej ? punktyNaMecz(wczesniej) : null, 2) +
     boxNadwyzka() +
+    boxStanSezonu() +
     boxRekord();
 }
 
