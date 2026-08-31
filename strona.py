@@ -1047,9 +1047,9 @@ function svgWykresPozycji(sezon, kolumna) {
   const W = CHART_W, H = CHART_H, padL = CHART_PAD.l, padR = CHART_PAD.r,
         padT = CHART_PAD.t, padB = CHART_PAD.b;
   const maxK = 34;  // pelny sezon Ekstraklasy - wspolna os dla obu wykresow
-  const pozycje = dane.map(d => d.p);
   const minP = 1;
-  const maxP = Math.max(...pozycje, 6);
+  const maxP = 18;  // liczba druzyn w Ekstraklasie - stala skala, nie
+                     // dociagana do najgorszej dotychczasowej pozycji
   const xOf = k => padL + (k - 1) / (maxK - 1) * (W - padL - padR);
   const yOf = p => padT + (p - minP) / (maxP - minP) * (H - padT - padB);
   ustawHoverDane(kolumna, dane, "pozycja", d => yOf(d.p));
