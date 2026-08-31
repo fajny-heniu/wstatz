@@ -1382,15 +1382,22 @@ function svgWykresTrend(sezon, kolumna) {
 
   const linia = (klucz) => seria.map(s => `${xOf(s.k)},${yOf(s[klucz])}`).join(" ");
   const koniec = seria[seria.length - 1];
-  const etTxt = (klucz, klasa) =>
-    `<text class="etykieta ${klasa}" x="${Math.min(xOf(koniec.k) + 8, W - 30)}" y="${yOf(koniec[klucz]) + 4}">${Math.round(koniec[klucz])}%</text>`;
+  const celeEtykiet = [
+    { klucz: "pkt", klasa: "", y: yOf(koniec.pkt) },
+    { klucz: "strz", klasa: "etykieta-strz", y: yOf(koniec.strz) },
+    { klucz: "xga", klasa: "etykieta-xg", y: yOf(koniec.xga) },
+  ];
+  const rozsuniete = rozsunEtykiety(celeEtykiet, 15);
+  const etykietyTekst = rozsuniete.map(e =>
+    `<text class="etykieta ${e.klasa}" x="${Math.min(xOf(koniec.k) + 8, W - 30)}" y="${e.y + 4}">${Math.round(koniec[e.klucz])}%</text>`
+  ).join("");
 
   return `<svg viewBox="0 0 ${W} ${H}">
     ${siatka}${osX}
     <polyline class="seria-strz" points="${linia("strz")}"/>
     <polyline class="seria-xg" points="${linia("xga")}"/>
     <polyline class="seria" points="${linia("pkt")}"/>
-    ${etTxt("pkt", "")}${etTxt("strz", "etykieta-strz")}${etTxt("xga", "etykieta-xg")}${nakladkaHover()}
+    ${etykietyTekst}${nakladkaHover()}
   </svg>
   <p class="chart-legenda">
     <span class="lg-gole">— punkty</span>
@@ -1424,6 +1431,20 @@ const HOVER_FORMAT = {
 // Nakladka do rysowania linii/kropki na hover - te same wspolrzedne co
 // reszta wykresu, ale generowana raz i tylko przesuwana przez JS (szybsze
 // niz przerysowywanie calego SVG przy kazdym ruchu palca).
+// Kilka etykiet tekstowych na tej samej wysokosci-w-przyblizeniu (np. trzy
+// koncowe wartosci na wykresie Trend) zlewa sie, gdy liczby sa blisko siebie
+// (np. 99% i 102%). Rozsuwa je pionowo od najwyzszej do najnizszej, tak zeby
+// zachowac minimalny odstep - nie zmienia kolejnosci, tylko separuje.
+function rozsunEtykiety(pozycje, minOdstep) {
+  const posortowane = [...pozycje].sort((a, b) => a.y - b.y);
+  for (let i = 1; i < posortowane.length; i++) {
+    if (posortowane[i].y - posortowane[i - 1].y < minOdstep) {
+      posortowane[i].y = posortowane[i - 1].y + minOdstep;
+    }
+  }
+  return posortowane;
+}
+
 function nakladkaHover() {
   const { t: padT, b: padB } = CHART_PAD;
   return `<line class="hover-linia" x1="0" y1="${padT}" x2="0" y2="${CHART_H - padB}"/>
