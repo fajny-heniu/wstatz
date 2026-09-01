@@ -80,6 +80,12 @@
     display: flex; align-items: center; justify-content: space-between;
     gap: 12px; font-size: 13px; color: var(--muted-2); line-height: 1.4;
   }
+  /* Bez tego "display: flex" powyzej nadpisywalo domyslne zachowanie
+     atrybutu [hidden] (reguly autora zawsze wygrywaja z arkuszem
+     przegladarki) - pasek renderowal sie zawsze widoczny, pusty, gdy JS
+     nie ustawil tekstu (np. nierozpoznana przegladarka, juz zainstalowana
+     PWA, desktop). Realny blad zlapany na zywym telefonie uzytkownika. */
+  .podpowiedz-pwa[hidden] { display: none; }
   .podpowiedz-pwa button {
     flex: none; background: none; border: none; color: var(--muted);
     font-size: 20px; line-height: 1; cursor: pointer; padding: 0 4px;
