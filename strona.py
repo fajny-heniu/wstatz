@@ -92,6 +92,18 @@ SZABLON = """<!DOCTYPE html>
       rgba(94,16,24,.045) 0 1px, transparent 1px 9px);
   }
   header { max-width: 1240px; margin: 0 auto 30px; }
+
+  .podpowiedz-pwa {
+    max-width: 1240px; margin: 0 auto 18px;
+    background: var(--panel-alt); border: 1px solid var(--line);
+    border-radius: 6px; padding: 10px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; font-size: 13px; color: var(--muted-2); line-height: 1.4;
+  }
+  .podpowiedz-pwa button {
+    flex: none; background: none; border: none; color: var(--muted);
+    font-size: 20px; line-height: 1; cursor: pointer; padding: 0 4px;
+  }
   h1 {
     font-family: var(--display); font-weight: 600;
     font-size: clamp(28px, 5vw, 46px);
@@ -494,6 +506,11 @@ SZABLON = """<!DOCTYPE html>
   <p class="sub" id="sub"></p>
 </header>
 
+<div class="podpowiedz-pwa" id="podpowiedzPwa" hidden>
+  <span id="podpowiedzPwaTekst"></span>
+  <button id="podpowiedzPwaZamknij" aria-label="Zamknij podpowiedź">×</button>
+</div>
+
 <div class="compare" id="compare"></div>
 
 <div class="forma" id="forma"></div>
@@ -545,6 +562,58 @@ function zastosujMotyw(motyw) {
 // pelne rozwiazanie wymagaloby osobnego, synchronicznego skryptu w
 // <head>, czego nie robimy teraz).
 zastosujMotyw(localStorage.getItem(KLUCZ_MOTYWU) || "light");
+
+// Podpowiedz "dodaj do ekranu glownego" - tylko na telefonie, tylko jesli
+// strona NIE dziala juz jako zainstalowana PWA, i tylko jesli uzytkownik
+// jej wczesniej trwale nie schowal. Rozroznia Safari/Chrome na iOS, bo
+// sciezka jest inna w kazdym (potwierdzone realnymi zrzutami ekranu) -
+// dla pozostalych przegladarek (Android, desktop w trybie mobile itd.)
+// pokazujemy ogolna wskazowke, nie zgadujemy menu, ktorego nie widzielismy.
+const KLUCZ_PODPOWIEDZ_PWA = "wstatz-ukryto-podpowiedz-pwa";
+
+function wykryjPrzegladarkeIOS() {
+  const ua = navigator.userAgent;
+  const iOS = /iPad|iPhone|iPod/.test(ua);
+  if (!iOS) return null;
+  if (ua.includes("CriOS")) return "chrome-ios";
+  if (ua.includes("FxiOS")) return "firefox-ios";
+  if (ua.includes("Safari")) return "safari-ios";
+  return "inny-ios";
+}
+
+function pokazPodpowiedzPWA() {
+  if (localStorage.getItem(KLUCZ_PODPOWIEDZ_PWA)) return;
+
+  // juz zainstalowana jako PWA (standalone) - podpowiedz nie ma sensu,
+  // i przy okazji zapamietujemy to trwale, zeby nigdy wiecej nie pytac
+  const standalone = window.navigator.standalone === true
+    || window.matchMedia("(display-mode: standalone)").matches;
+  if (standalone) {
+    localStorage.setItem(KLUCZ_PODPOWIEDZ_PWA, "1");
+    return;
+  }
+
+  // tylko telefon/tablet - na desktopie "dodaj do ekranu glownego" nie
+  // ma tego samego znaczenia
+  const mobilny = /iPad|iPhone|iPod|Android/.test(navigator.userAgent);
+  if (!mobilny) return;
+
+  const przegladarka = wykryjPrzegladarkeIOS();
+  let tekst = null;
+  if (przegladarka === "safari-ios") {
+    tekst = "Zapisz WSTATZ na ekranie głównym: dotknij Udostępnij (□↑), potem „Dodaj do ekranu głównego”.";
+  } else if (przegladarka === "chrome-ios") {
+    tekst = "Zapisz WSTATZ na ekranie głównym: dotknij ••• (więcej), potem Udostępnij, potem „Dodaj do ekranu głównego”.";
+  } else if (/Android/.test(navigator.userAgent)) {
+    tekst = "Zapisz WSTATZ na ekranie głównym: menu przeglądarki (⋮) → „Dodaj do ekranu głównego”.";
+  }
+  // firefox-ios i inny-ios: sciezki nie sprawdzilismy na zywo, nie zgadujemy
+  if (!tekst) return;
+
+  document.getElementById("podpowiedzPwaTekst").textContent = tekst;
+  document.getElementById("podpowiedzPwa").hidden = false;
+}
+pokazPodpowiedzPWA();
 
 const DANE = __DANE__;
 const METRYKI = [
@@ -1652,6 +1721,11 @@ document.getElementById("wykresy").addEventListener("click", e => {
     e.currentTarget.textContent = "Ukryj wykresy";
     e.currentTarget.setAttribute("aria-pressed", "true");
   }
+});
+
+document.getElementById("podpowiedzPwaZamknij").addEventListener("click", () => {
+  localStorage.setItem(KLUCZ_PODPOWIEDZ_PWA, "1");
+  document.getElementById("podpowiedzPwa").hidden = true;
 });
 
 document.getElementById("motyw").addEventListener("click", () => {
