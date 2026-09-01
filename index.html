@@ -395,13 +395,21 @@
   .align-mode thead th.sortowalna:hover { color: var(--muted); }
   td { padding: 14px 6px; border-bottom: 1px solid var(--hairline); text-align: right; white-space: nowrap; }
   tbody tr:hover td { background: var(--panel-alt); }
-  .gutter { width: 16px; padding-left: 12px; }
+  .gutter { width: 22px; padding-left: 8px; }
   /* wstazka formy: splot sezonu widoczny przy przegladaniu w dol.
-     te same kolory co badge.W/.R/.P - jeden jezyk wizualny dla wyniku w calej stronie */
-  .tick { display: block; width: 7px; height: 15px; border: 1.5px solid var(--muted); }
-  .tick.W { background: var(--win); border-color: var(--win); }
-  .tick.R { background: var(--draw); border-color: var(--draw); }
-  .tick.P { background: var(--loss); border-color: var(--loss); }
+     te same kolory co badge.W/.R/.P - jeden jezyk wizualny dla wyniku w calej stronie.
+     Litera w srodku (nie tylko kolor) - rozszerzenie wzorca z plakietek na
+     rynsztok, ktory mial wczesniej tylko kolor - czerwien/zielen nie
+     odrozniaja daltonisci najczestszego typu. */
+  .tick {
+    display: grid; place-items: center;
+    width: 15px; height: 17px; border: 1.5px solid var(--muted);
+    font-family: var(--display); font-size: 9px; font-weight: 700;
+    line-height: 1; color: var(--muted);
+  }
+  .tick.W { background: var(--win); border-color: var(--win); color: #fff; }
+  .tick.R { background: var(--draw); border-color: var(--draw); color: #fff; }
+  .tick.P { background: var(--loss); border-color: var(--loss); color: #fff; }
   .k { color: var(--muted); width: 26px; }
   .match { text-align: left; font-family: var(--label); font-size: clamp(11.5px, 1.5vw + 6px, 13px); white-space: normal; line-height: 1.4; }
   .match .w { font-weight: 700; color: var(--oxblood); }
@@ -955,7 +963,7 @@ function wiersz(m, sezon) {
   const gwiazdkaRekordu = jestRekordem
     ? `<span class="rekord-znacznik" title="Rekord sezonu (xG − xGA)">★</span>` : "";
   return `<tr>
-    <td class="gutter"><span class="tick ${m.rezultat || ""}" title="${m.rezultat || ""}"></span></td>
+    <td class="gutter"><span class="tick ${m.rezultat || ""}" title="${m.rezultat || ""}">${m.rezultat || ""}</span></td>
     <td class="k">${m.kolejka}</td>
     <td class="match" data-fixture="${m.fixture_id}" title="Historia z tym rywalem">${strzalkaH2H}${gospodarz} – ${gosc}${gwiazdkaRekordu}</td>
     <td class="score">${m.wynik || '<span class="wkrotce">wkrótce</span>'}</td>
