@@ -320,6 +320,23 @@ SZABLON = """<!DOCTYPE html>
   .seria-strz { fill: none; stroke: var(--muted); stroke-width: 1.6; stroke-dasharray: 1 3; }
   .seria-projekcja { fill: none; stroke: var(--win); stroke-width: 1.6; stroke-dasharray: 6 3; }
   .seria-archiwum { fill: none; stroke: var(--faint); stroke-width: 1.3; opacity: .8; }
+  .seria-wczesniej { fill: none; stroke: var(--oxblood); stroke-width: 1.6; }
+  .chart-legenda .lg-wczesniej { color: var(--oxblood); }
+  .zakres-pas { fill: var(--signal); opacity: .08; }
+  .zakres-selektory {
+    display: flex; gap: 18px; margin-bottom: 14px; flex-wrap: wrap;
+  }
+  .zakres-selektory label {
+    display: flex; align-items: center; gap: 7px;
+    font-family: var(--label); font-size: 13px; color: var(--muted);
+  }
+  .zakres-selektory input[type="number"] {
+    width: 58px; padding: 5px 8px; border: 1px solid var(--line);
+    border-radius: 4px; background: var(--panel); color: var(--ink);
+    font-family: var(--data); font-size: 14px;
+  }
+  .zakres-panel .chart { max-width: 1240px; margin: 0 auto 18px; }
+  .zakres-panel .compare { margin: 0 auto; }
   .chart-legenda .lg-archiwum { color: var(--muted-2); }
   .etykieta-projekcja { fill: var(--win); font-weight: 700; }
   .chart-legenda .lg-projekcja { color: var(--win); }
@@ -720,6 +737,140 @@ function punktyNaMecz(sezon) {
   return (bil.W * 3 + bil.R) / s.liczba_meczow;
 }
 
+// Statystyki liczone z dowolnego zakresu kolejek [kMin, kMax], nie calego
+// sezonu - wiernie odtwarza formuly z srednie() w zbuduj.py (srednia tylko
+// z meczow, gdzie dana metryka istnieje; nadwyzka to suma gole minus suma
+// xG, nie srednia z roznic - identyczne z nadwyzkaGoli() ponizej), tylko
+// liczone na zywo w JS, bo zakres wybiera uzytkownik interaktywnie.
+function statystykiWZakresie(sezon, kMin, kMax) {
+  const mecze = DANE.sezony[sezon].mecze.filter(m =>
+    m.rezultat && m.kolejka >= kMin && m.kolejka <= kMax);
+  if (!mecze.length) return null;
+
+  const srednia = (klucz) => {
+    const wart = mecze.filter(m => m[klucz] !== null && m[klucz] !== undefined).map(m => m[klucz]);
+    return wart.length ? wart.reduce((a, b) => a + b, 0) / wart.length : null;
+  };
+
+  const bilans = { W: 0, R: 0, P: 0 };
+  mecze.forEach(m => bilans[m.rezultat]++);
+
+  const sumaGole = mecze.reduce((s, m) => s + (m.widzew_gole ?? 0), 0);
+  const meczeZXg = mecze.filter(m => m.widzew_xg !== null);
+  const sumaXg = meczeZXg.reduce((s, m) => s + m.widzew_xg, 0);
+
+  return {
+    n: mecze.length,
+    kMin: Math.min(...mecze.map(m => m.kolejka)),
+    kMax: Math.max(...mecze.map(m => m.kolejka)),
+    widzew_xg: srednia("widzew_xg"),
+    rywal_xg: srednia("rywal_xg"),
+    widzew_shots: srednia("widzew_shots"),
+    widzew_sot: srednia("widzew_sot"),
+    widzew_bc: srednia("widzew_bc"),
+    widzew_pass_pct: srednia("widzew_pass_pct"),
+    punktyNaMecz: (bilans.W * 3 + bilans.R) / mecze.length,
+    nadwyzkaGoli: meczeZXg.length ? sumaGole - sumaXg : null,
+    bilans,
+  };
+}
+
+// Wykres do zakladki "Porownaj zakres" - obie linie sezonow na wspolnej
+// osi kolejek (nie archiwum-duchy jak w "Na tle historii" - tutaj
+// wczesniej jest aktywnym partnerem porownania, nie tlem), plus
+// zacieniony pas pokazujacy wybrany zakres.
+function svgWykresZakresu(kMin, kMax) {
+  const { l: padL, r: padR, t: padT, b: padB } = CHART_PAD;
+  const W = CHART_W, H = CHART_H, maxK = CHART_MAXK;
+  const maxY = maxK * 3;
+  const krok = 20;
+  const xOf = k => padL + (k - 1) / (maxK - 1) * (W - padL - padR);
+  const yOf = v => padT + (1 - v / maxY) * (H - padT - padB);
+
+  let siatka = "";
+  for (let y = 0; y <= maxY + 0.001; y += krok) {
+    const py = yOf(y);
+    siatka += `<line class="grid-line" x1="${padL}" y1="${py}" x2="${W - padR}" y2="${py}"/>`;
+    siatka += `<text class="grid-label" x="2" y="${py + 3}">${Math.round(y)}</text>`;
+  }
+  let osX = "";
+  for (let k = 1; k <= maxK; k += 5) {
+    osX += `<text class="grid-label" x="${xOf(k)}" y="${H - 6}" text-anchor="middle">${k}</text>`;
+  }
+
+  const xLewo = xOf(Math.max(1, kMin)), xPrawo = xOf(Math.min(maxK, kMax));
+  const pas = `<rect class="zakres-pas" x="${xLewo}" y="${padT}" width="${Math.max(xPrawo - xLewo, 1)}" height="${H - padT - padB}"/>`;
+
+  const daneT = punktySkumulowane(teraz);
+  const daneW = wczesniej ? punktySkumulowane(wczesniej) : [];
+  const liniaT = daneT.map(d => `${xOf(d.k)},${yOf(d.pkt)}`).join(" ");
+  const liniaW = daneW.length ? daneW.map(d => `${xOf(d.k)},${yOf(d.pkt)}`).join(" ") : "";
+
+  return `<svg viewBox="0 0 ${W} ${H}">
+    ${siatka}${osX}
+    ${pas}
+    ${liniaW ? `<polyline class="seria-wczesniej" points="${liniaW}"/>` : ""}
+    <polyline class="seria" points="${liniaT}"/>
+  </svg>
+  <p class="chart-legenda"><span class="lg-gole">— ${pelny(teraz)}</span>
+    ${liniaW ? `<span class="lg-wczesniej">— ${pelny(wczesniej)}</span>` : ""}</p>`;
+}
+
+function boxBilans(etykietaTeraz, bilT, etykietaWczesniej, bilW) {
+  const f = b => b ? `${b.W}-${b.R}-${b.P}` : "–";
+  const drugi = etykietaWczesniej
+    ? `<div class="row was"><span class="sez">${etykietaWczesniej}</span><span class="val">${f(bilW)}</span></div>`
+    : "";
+  return `<div class="metric"><b>Bilans W-R-P</b>
+    <div class="row now"><span class="sez">${etykietaTeraz}</span><span class="val">${f(bilT)}</span></div>
+    ${drugi}</div>`;
+}
+
+// Zakres kolejek wybrany w zakladce "Porownaj zakres" - swiadomie NIE
+// zapamietywany (localStorage) na wyrazna prosbe uzytkownika, resetuje
+// sie do domyslnego (caly dotychczasowy przebieg biezacego sezonu) przy
+// kazdym wejsciu na strone od nowa.
+let zakresOd = null, zakresDo = null;
+
+function renderZakresPorownania() {
+  const graneT = DANE.sezony[teraz].mecze.filter(m => m.rezultat);
+  const maxKGrane = graneT.length ? Math.max(...graneT.map(m => m.kolejka)) : 1;
+  if (zakresOd === null) zakresOd = 1;
+  if (zakresDo === null) zakresDo = maxKGrane;
+  zakresOd = Math.max(1, Math.min(zakresOd, CHART_MAXK));
+  zakresDo = Math.max(1, Math.min(zakresDo, CHART_MAXK));
+  if (zakresOd > zakresDo) [zakresOd, zakresDo] = [zakresDo, zakresOd];
+
+  const selektory = `<div class="zakres-selektory">
+    <label>od kolejki <input type="number" id="zakresOd" min="1" max="${CHART_MAXK}" value="${zakresOd}"></label>
+    <label>do kolejki <input type="number" id="zakresDo" min="1" max="${CHART_MAXK}" value="${zakresDo}"></label>
+  </div>`;
+
+  const t = statystykiWZakresie(teraz, zakresOd, zakresDo);
+  const w = wczesniej ? statystykiWZakresie(wczesniej, zakresOd, zakresDo) : null;
+  const etT = t ? `${pelny(teraz)} (${t.n} mecz.)` : pelny(teraz);
+  const etW = wczesniej ? (w ? `${pelny(wczesniej)} (${w.n} mecz.)` : pelny(wczesniej)) : null;
+
+  const boksy = !t
+    ? `<p class="pusto">Brak rozegranych meczów Widzewa w tym zakresie kolejek.</p>`
+    : box("xG", etT, t.widzew_xg, etW, w ? w.widzew_xg : null, 2) +
+      box("xGA", etT, t.rywal_xg, etW, w ? w.rywal_xg : null, 2, true) +
+      box("Strzały", etT, t.widzew_shots, etW, w ? w.widzew_shots : null, 1) +
+      box("Na bramkę", etT, t.widzew_sot, etW, w ? w.widzew_sot : null, 1) +
+      box("Wielkie szanse", etT, t.widzew_bc, etW, w ? w.widzew_bc : null, 2) +
+      box("% podań", etT, t.widzew_pass_pct, etW, w ? w.widzew_pass_pct : null, 1) +
+      box("Punkty / mecz", etT, t.punktyNaMecz, etW, w ? w.punktyNaMecz : null, 2) +
+      boxNadwyzka(etT, t.nadwyzkaGoli, etW, w ? w.nadwyzkaGoli : null) +
+      boxBilans(etT, t.bilans, etW, w ? w.bilans : null);
+
+  return `<div class="zakres-panel">
+    ${selektory}
+    <div class="chart"><div class="wrap">${svgWykresZakresu(zakresOd, zakresDo)}</div></div>
+    <div class="compare">${boksy}</div>
+  </div>`;
+}
+
+
 // Gole strzelone minus suma xG - dodatnia wartosc znaczy, ze Widzew
 // wykanacza sytuacje lepiej niz sugeruje ich jakosc.
 function nadwyzkaGoli(sezon) {
@@ -909,58 +1060,60 @@ function boxRekord() {
     ${drugi}</div>`;
 }
 
+// Wspolny box uzywany w pasku srednich ORAZ w zakladce "Porownaj zakres" -
+// etykiety wierszy sa jawnym parametrem (nie zamkniecie na teraz/wczesniej),
+// bo zakres kolejek pokazuje "Kolejki 3-7", nie nazwe sezonu.
+function box(nazwa, etykietaTeraz, now, etykietaWczesniej, was, d, odwrocKolor = false) {
+  let delta = "";
+  if (now !== null && was !== null && now !== undefined && was !== undefined) {
+    const diff = now - was;
+    let cls = Math.abs(diff) < 0.005 ? "flat" : (diff > 0 ? "up" : "down");
+    // Dla metryk typu xGA "wiecej" jest gorsze, nie lepsze - bez tego
+    // rosnace xGA (gorsza obrona) swiecilo by sie na zielono, jakby to
+    // bylo dobrze. Odwracamy tylko kolor, znak liczby zostaje prawdziwy.
+    if (odwrocKolor && cls !== "flat") cls = cls === "up" ? "down" : "up";
+    const znak = diff > 0 ? "+" : "";
+    delta = `<span class="delta ${cls}">${znak}${diff.toFixed(d)}</span>`;
+  }
+  const drugi = etykietaWczesniej
+    ? `<div class="row was"><span class="sez">${etykietaWczesniej}</span>
+         <span class="val">${fmt(was, d)}</span></div>`
+    : "";
+  return `<div class="metric"><b>${nazwa}</b>
+    <div class="row now"><span class="sez">${etykietaTeraz}</span>
+      <span class="val">${fmt(now, d)}</span>${delta}</div>
+    ${drugi}</div>`;
+}
+
+function boxNadwyzka(etykietaTeraz, t, etykietaWczesniej, p) {
+  function wart(v) {
+    if (v === null || v === undefined) return `<span class="val">–</span>`;
+    const znak = v > 0 ? "+" : "";
+    const klasa = v > 0.05 ? "up" : v < -0.05 ? "down" : "flat";
+    return `<span class="val ${klasa}">${znak}${v.toFixed(2)}</span>`;
+  }
+  const drugi = etykietaWczesniej
+    ? `<div class="row was"><span class="sez">${etykietaWczesniej}</span>${wart(p)}</div>`
+    : "";
+  return `<div class="metric"><b>Gole − xG</b>
+    <div class="row now"><span class="sez">${etykietaTeraz}</span>${wart(t)}</div>
+    ${drugi}</div>`;
+}
+
 function compare() {
   const el = document.getElementById("compare");
   const a = DANE.sezony[teraz].srednie;
   const b = wczesniej ? DANE.sezony[wczesniej].srednie : null;
 
-  function box(nazwa, now, was, d, odwrocKolor = false) {
-    let delta = "";
-    if (now !== null && was !== null && now !== undefined && was !== undefined) {
-      const diff = now - was;
-      let cls = Math.abs(diff) < 0.005 ? "flat" : (diff > 0 ? "up" : "down");
-      // Dla metryk typu xGA "wiecej" jest gorsze, nie lepsze - bez tego
-      // rosnace xGA (gorsza obrona) swiecilo by sie na zielono, jakby to
-      // bylo dobrze. Odwracamy tylko kolor, znak liczby zostaje prawdziwy.
-      if (odwrocKolor && cls !== "flat") cls = cls === "up" ? "down" : "up";
-      const znak = diff > 0 ? "+" : "";
-      delta = `<span class="delta ${cls}">${znak}${diff.toFixed(d)}</span>`;
-    }
-    const drugi = wczesniej
-      ? `<div class="row was"><span class="sez">${pelny(wczesniej)}</span>
-           <span class="val">${fmt(was, d)}</span></div>`
-      : "";
-    return `<div class="metric"><b>${nazwa}</b>
-      <div class="row now"><span class="sez">${pelny(teraz)}</span>
-        <span class="val">${fmt(now, d)}</span>${delta}</div>
-      ${drugi}</div>`;
-  }
-
-  function boxNadwyzka() {
-    const t = nadwyzkaGoli(teraz);
-    const p = wczesniej ? nadwyzkaGoli(wczesniej) : null;
-    function wart(v) {
-      if (v === null || v === undefined) return `<span class="val">–</span>`;
-      const znak = v > 0 ? "+" : "";
-      const klasa = v > 0.05 ? "up" : v < -0.05 ? "down" : "flat";
-      return `<span class="val ${klasa}">${znak}${v.toFixed(2)}</span>`;
-    }
-    const drugi = wczesniej
-      ? `<div class="row was"><span class="sez">${pelny(wczesniej)}</span>${wart(p)}</div>`
-      : "";
-    return `<div class="metric"><b>Gole − xG</b>
-      <div class="row now"><span class="sez">${pelny(teraz)}</span>${wart(t)}</div>
-      ${drugi}</div>`;
-  }
-
   el.innerHTML =
-    box(METRYKI[0][1], a["widzew_" + METRYKI[0][0]], b ? b["widzew_" + METRYKI[0][0]] : null, METRYKI[0][2]) +
-    box("xGA", a.rywal_xg, b ? b.rywal_xg : null, 2, true) +
+    box(METRYKI[0][1], pelny(teraz), a["widzew_" + METRYKI[0][0]],
+        wczesniej ? pelny(wczesniej) : null, b ? b["widzew_" + METRYKI[0][0]] : null, METRYKI[0][2]) +
+    box("xGA", pelny(teraz), a.rywal_xg, wczesniej ? pelny(wczesniej) : null, b ? b.rywal_xg : null, 2, true) +
     METRYKI.slice(1).map(([k, nazwa, d]) =>
-      box(nazwa, a["widzew_" + k], b ? b["widzew_" + k] : null, d)).join("") +
-    box("Punkty / mecz", punktyNaMecz(teraz),
-        wczesniej ? punktyNaMecz(wczesniej) : null, 2) +
-    boxNadwyzka() +
+      box(nazwa, pelny(teraz), a["widzew_" + k], wczesniej ? pelny(wczesniej) : null, b ? b["widzew_" + k] : null, d)).join("") +
+    box("Punkty / mecz", pelny(teraz), punktyNaMecz(teraz),
+        wczesniej ? pelny(wczesniej) : null, wczesniej ? punktyNaMecz(wczesniej) : null, 2) +
+    boxNadwyzka(pelny(teraz), nadwyzkaGoli(teraz), wczesniej ? pelny(wczesniej) : null, wczesniej ? nadwyzkaGoli(wczesniej) : null) +
     boxStanSezonu() +
     boxRekord();
 }
@@ -1585,6 +1738,11 @@ const DEFINICJE_WYKRESOW = [
       był najlepszy. Czerwona linia to bieżący sezon — powyżej szarych
       linii oznacza lepszy start niż zwykle, poniżej — gorszy. Archiwum
       ma tylko wyniki, nie xG, więc to jedyny czysto punktowy wykres.` },
+  { id: "zakres", etykieta: "Porównaj zakres", fn: null,
+    wyjasnienie: `Wybierz dowolny zakres kolejek (np. „od 3 do 7") i
+      zobacz uśrednione statystyki z tego okna — zestawione z tym samym
+      zakresem kolejek rok wcześniej. Zacieniony pas na wykresie pokazuje
+      wybrany fragment sezonu.` },
 ];
 let aktywnyWykres = "pozycja";
 
@@ -1599,6 +1757,15 @@ function renderCharts() {
   const wyjasnienie = aktywny.wyjasnienie
     ? `<p class="chart-wyjasnienie">${aktywny.wyjasnienie}</p>`
     : "";
+
+  // "Porownaj zakres" ma inny ksztalt niz reszta - jeden wspolny wykres
+  // i panel selektorow, nie dwie kolumny sezonow obok siebie.
+  if (aktywnyWykres === "zakres") {
+    el.innerHTML = `<div class="chart-taby">${zakladki}</div>
+      ${wyjasnienie}
+      ${renderZakresPorownania()}`;
+    return;
+  }
 
   const kolumny = sezony.map((s, i) => {
     const ost = pozycjeSeria(s).slice(-1)[0];
@@ -1621,6 +1788,16 @@ document.getElementById("charts").addEventListener("click", e => {
   if (!tab) return;
   aktywnyWykres = tab.dataset.wykres;
   renderCharts();
+});
+
+document.getElementById("charts").addEventListener("change", e => {
+  if (e.target.id === "zakresOd") {
+    zakresOd = parseInt(e.target.value, 10) || 1;
+    renderCharts();
+  } else if (e.target.id === "zakresDo") {
+    zakresDo = parseInt(e.target.value, 10) || 1;
+    renderCharts();
+  }
 });
 
 // Najedz kursorem lub dotknij wykres, zobacz wartosc - jeden mechanizm dla
