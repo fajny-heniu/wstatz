@@ -337,6 +337,10 @@ SZABLON = """<!DOCTYPE html>
   }
   .zakres-panel .chart { max-width: 1240px; margin: 0 auto 18px; }
   .zakres-panel .compare { margin: 0 auto; }
+  .zakres-info {
+    max-width: 1240px; margin: 0 auto 12px; font-size: 12px;
+    color: var(--muted); font-family: var(--label);
+  }
   .chart-legenda .lg-archiwum { color: var(--muted-2); }
   .etykieta-projekcja { fill: var(--win); font-weight: 700; }
   .chart-legenda .lg-projekcja { color: var(--win); }
@@ -848,8 +852,16 @@ function renderZakresPorownania() {
 
   const t = statystykiWZakresie(teraz, zakresOd, zakresDo);
   const w = wczesniej ? statystykiWZakresie(wczesniej, zakresOd, zakresDo) : null;
-  const etT = t ? `${pelny(teraz)} (${t.n} mecz.)` : pelny(teraz);
-  const etW = wczesniej ? (w ? `${pelny(wczesniej)} (${w.n} mecz.)` : pelny(wczesniej)) : null;
+  // Krotkie etykiety w boksach (jak w pasku srednich) - liczba meczow NIE
+  // wchodzi tutaj, bo .sez ma white-space:nowrap i flex:none, wiec dluzszy
+  // tekst ("2026/2027 (6 mecz.)") wychodzil poza szerokosc boksu. Liczba
+  // meczow pokazana raz, w osobnej linijce nad boksami.
+  const etT = pelny(teraz);
+  const etW = wczesniej ? pelny(wczesniej) : null;
+  const infoMeczow = `<p class="zakres-info">
+    ${pelny(teraz)}: ${t ? `${t.n} rozegranych` : "brak rozegranych"}
+    ${wczesniej ? `· ${pelny(wczesniej)}: ${w ? `${w.n} rozegranych` : "brak rozegranych"}` : ""}
+  </p>`;
 
   const boksy = !t
     ? `<p class="pusto">Brak rozegranych meczów Widzewa w tym zakresie kolejek.</p>`
@@ -866,6 +878,7 @@ function renderZakresPorownania() {
   return `<div class="zakres-panel">
     ${selektory}
     <div class="chart"><div class="wrap">${svgWykresZakresu(zakresOd, zakresDo)}</div></div>
+    ${infoMeczow}
     <div class="compare">${boksy}</div>
   </div>`;
 }
