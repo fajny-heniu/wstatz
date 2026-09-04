@@ -790,6 +790,41 @@ def main():
                  "    zeby cofanie w razie bledu bylo bezpieczne.")
         krok.ok()
 
+        # CSV moze byc aktualizowany takze poza tym komputerem (recznie, przez
+        # GitHuba). Bez tego kroku skrypt pracowalby na starej wersji pliku,
+        # a push na koncu zostalby odrzucony jako nieaktualny.
+        krok("synchronizuje z GitHubem")
+        git("fetch", "--quiet", "origin")
+        galaz = git("rev-parse", "--abbrev-ref", "HEAD") or "main"
+        zdalna = f"origin/{galaz}"
+        przed = git("rev-parse", "HEAD")
+        try:
+            za_nami = git("rev-list", "--count", f"HEAD..{zdalna}", cicho=True)
+            przed_nami = git("rev-list", "--count", f"{zdalna}..HEAD", cicho=True)
+        except SystemExit:
+            raise
+        za_nami = int(za_nami or 0)
+        przed_nami = int(przed_nami or 0)
+        if za_nami and przed_nami:
+            stop(f"Lokalne repo i GitHub rozjechaly sie ({przed_nami} lokalnych,\n"
+                 f"    {za_nami} zdalnych commitow). Rozwiaz to recznie:\n"
+                 f"    git pull --rebase   albo   git reset --hard {zdalna}")
+        elif za_nami:
+            git("merge", "--ff-only", zdalna)
+            krok.ok(f"pobrano {za_nami} zmian z GitHuba")
+            # plik mogl sie zmienic - czytamy go ponownie
+            wiersze, naglowki = wczytaj_csv(sciezka)
+            znane = {w.get("fixture_id") for w in wiersze
+                     if (w.get("score_ft") or "").strip()}
+            print(f"    CSV przeczytany ponownie: {len(wiersze)} wierszy")
+        elif przed_nami:
+            krok.ok(f"masz {przed_nami} niewypchnietych commitow - dolacza do tego pushu")
+        else:
+            krok.ok("bez zmian")
+        if przed != git("rev-parse", "HEAD"):
+            print("    (uwaga: aktualizuj.py mogl sie zmienic razem z reszta -\n"
+                  "     jesli tak, uruchom komende jeszcze raz)")
+
     krok("otwieram przegladarke")
     pw, br, page = otworz_przegladarke(args.widok or args.diagnostyka)
     krok.ok("chromium" + (", okno widoczne" if (args.widok or args.diagnostyka) else ""))
