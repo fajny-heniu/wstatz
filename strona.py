@@ -476,6 +476,8 @@ SZABLON = """<!DOCTYPE html>
     font-family: var(--data); letter-spacing: 0;
     text-transform: none; color: var(--oxblood); font-weight: 700;
   }
+  .h2h-panel.h2h-auto td { padding-bottom: 10px; }
+  .h2h-panel.h2h-auto .h2h-tytul { margin-bottom: 0; }
   .h2h-brak { font-size: 12px; color: var(--muted); font-style: italic; margin: 0; }
   .h2h-lista { display: flex; flex-direction: column; gap: 5px; }
   .h2h-linia { display: flex; align-items: baseline; gap: 9px; font-size: clamp(11.5px, 1.5vw + 6px, 13px); }
@@ -894,6 +896,16 @@ function nadwyzkaGoli(sezon) {
   return gole - xg;
 }
 
+// Najblizszy nadchodzacy mecz: najnizsza kolejka wsrod tych bez wyniku.
+// Jedno zrodlo prawdy - uzywane i przez wstazke formy (jeden "?" na starcie),
+// i przez automatycznie rozwiniety bilans H2H pod wierszem zapowiedzi.
+function najblizszyMecz(sezon) {
+  const nadchodzace = DANE.sezony[sezon].mecze.filter(m => !m.rezultat);
+  return nadchodzace.length
+    ? nadchodzace.reduce((a, b) => a.kolejka < b.kolejka ? a : b)
+    : null;
+}
+
 // Ostatnie n rozegranych meczow, od najstarszego do najnowszego (lewo->prawo).
 // Braki po lewej to mecze jeszcze nierozegrane - nie zero, nie pominiecie.
 function formaSeria(sezon, n = 5) {
@@ -905,10 +917,7 @@ function formaSeria(sezon, n = 5) {
   // zapowiedzi na raz, nawet jesli w danych jest ich wiecej (np. 3 zapowiedzi
   // naraz jak w 2026/27) - bo to psulo by sens "formy" (przewaga placeholderow
   // nad realnymi wynikami).
-  const nadchodzace = wszystkie.filter(m => !m.rezultat);
-  const najblizszy = nadchodzace.length
-    ? nadchodzace.reduce((a, b) => a.kolejka < b.kolejka ? a : b)
-    : null;
+  const najblizszy = najblizszyMecz(sezon);
   return najblizszy ? [najblizszy, ...grane] : grane;
 }
 
@@ -1142,6 +1151,15 @@ function wiersz(m, sezon) {
     ? '<span class="none">–</span>' : v;
   const otwarty = h2hOtwarte.has(m.fixture_id);
   const strzalkaH2H = `<span class="h2h-toggle">${otwarty ? "▾" : "▸"}</span>`;
+  // Bilans H2H z najblizszym rywalem widoczny bez klikania (backlog AD).
+  // Trzy warunki: tylko biezacy sezon, tylko poza trybem zestawiania kolejek
+  // (dodatkowy wiersz w jednej kolumnie rozjechalby wyrownanie kolejek),
+  // i tylko gdy jest co pokazac - bez historii zostaje pusto, zamiast
+  // trwalej linijki z komunikatem o braku danych.
+  const najblizszy = sezon === teraz && !alignByRound ? najblizszyMecz(teraz) : null;
+  const autoBilans = !otwarty && najblizszy
+    && najblizszy.fixture_id === m.fixture_id
+    && h2hDlaMeczu(m).length > 0;
   // Gwiazdka przy meczu, ktory jest Rekordem sezonu (xG-xGA wsrod W/R) -
   // ten sam mecz co w pasku srednich i na wykresie xG.
   const rekord = sezon && rekordSezonu(sezon);
@@ -1163,7 +1181,7 @@ function wiersz(m, sezon) {
     <td>${pusto(m.widzew_pass_pct)}</td>
     <td>${pusto(m.punkty_do)}</td>
     <td>${pusto(m.pozycja)}</td>
-  </tr>${otwarty ? wierszH2H(m) : ""}`;
+  </tr>${otwarty ? wierszH2H(m) : (autoBilans ? wierszH2HBilans(m) : "")}`;
 }
 
 // Bilans W-R-P wliczajac klikniety mecz - "w sumie teraz mamy z nimi X-Y-Z",
@@ -1177,6 +1195,18 @@ function h2hBilans(mecz, historia) {
   // (bez wyniku), a wtedy dlugosc tablicy i suma W+R+P by sie rozjechaly
   // (np. "9 m. * 3-1-4" gdzie 3+1+4=8, nie 9 - zlapane na Lechu Poznan).
   return { w, r, p, n: w + r + p };
+}
+
+// Kompaktowy wariant panelu: sam bilans W-R-P, bez listy spotkan - dla
+// najblizszego meczu, rozwiniety automatycznie. Klik na wiersz przelacza na
+// pelna historie, kolejny klik wraca tutaj (panel nie znika calkiem).
+function wierszH2HBilans(mecz) {
+  const historia = h2hDlaMeczu(mecz);
+  const b = h2hBilans(mecz, historia);
+  return `<tr class="h2h-panel h2h-auto"><td colspan="${KOLUMNY.length}">
+    <div class="h2h-tytul"><span class="h2h-nazwa">Historia z ${mecz.rywal_nazwa}</span>
+      <span class="h2h-bilans">${b.n} m. · ${b.w}-${b.r}-${b.p}</span></div>
+  </td></tr>`;
 }
 
 function wierszH2H(mecz) {
