@@ -232,6 +232,82 @@ def wiersz_do_meczu(r):
     return m
 
 
+def kadencje(sezony, archiwum):
+    """Odcinki trenerskie z trenerzy.csv. Plik zawiera SAME POCZATKI
+    (sezon, od_kolejki, trener) - koniec kadencji wynika z nastepnego
+    wiersza, wiec nie da sie wpisac dziury ani nakladajacych sie okresow.
+
+    Kadencje przechodzace przez lato sa DZIELONE na granicy sezonu: miedzy
+    ostatnia kolejka a pierwsza nastepnego lezy okno transferowe, wiec to
+    czesciowo inna druzyna, nie jeden reżim. Ciaglosc nie ginie - odcinek
+    dostaje pole `ciagle_od` z sezonem, w ktorym ta kadencja sie zaczela.
+    """
+    sciezka = HERE / "trenerzy.csv"
+    if not sciezka.exists():
+        return [], []
+
+    with open(sciezka, newline="", encoding="utf-8") as f:
+        zapisy = [r for r in csv.DictReader(f) if (r.get("trener") or "").strip()]
+    if not zapisy:
+        return [], []
+
+    wszystkie = {**archiwum, **sezony}
+    porzadek = sorted(wszystkie.keys())  # "2022/23" < "2023/24" sortuje sie leksykalnie
+    idx = {s: i for i, s in enumerate(porzadek)}
+
+    ostrz = []
+    zapisy = [r for r in zapisy if r["sezon"] in idx]
+    zapisy.sort(key=lambda r: (idx[r["sezon"]], int(r["od_kolejki"])))
+
+    odcinki = []
+    for i, r in enumerate(zapisy):
+        trener = r["trener"].strip()
+        od_sezon, od_kolejka = r["sezon"], int(r["od_kolejki"])
+        nast = zapisy[i + 1] if i + 1 < len(zapisy) else None
+
+        # Sezony objete ta kadencja: od jej startu do startu nastepnej
+        ost_sezon = nast["sezon"] if nast else porzadek[-1]
+        for sezon in porzadek[idx[od_sezon]: idx[ost_sezon] + 1]:
+            mecze = wszystkie[sezon]["mecze"]
+            kolejki = [m["kolejka"] for m in mecze if m["kolejka"]]
+            if not kolejki:
+                continue
+            start = od_kolejka if sezon == od_sezon else 1
+            if nast and sezon == nast["sezon"]:
+                koniec = int(nast["od_kolejki"]) - 1
+            else:
+                koniec = max(kolejki)
+            if koniec < start:
+                continue
+            objete = [m for m in mecze if m["kolejka"] and start <= m["kolejka"] <= koniec]
+            odcinki.append({
+                "trener": trener,
+                "sezon": sezon,
+                "od": start,
+                "do": koniec,
+                "n": sum(1 for m in objete if m["rezultat"]),
+                "n_kolejek": len(objete),
+                "ciagle_od": od_sezon if sezon != od_sezon else None,
+                "archiwalny": sezon in archiwum,
+            })
+
+    # Kontrola spojnosci: kazdy mecz w danych musi nalezec do dokladnie
+    # jednej kadencji. Blad w kolumnie od_kolejki wyjdzie tutaj, zamiast
+    # cicho dac zle liczby na stronie.
+    pokryte = sum(o["n_kolejek"] for o in odcinki)
+    wszystkich = sum(
+        len([m for m in w["mecze"] if m["kolejka"]])
+        for s, w in wszystkie.items()
+        if idx[s] >= idx[zapisy[0]["sezon"]]
+    )
+    if pokryte != wszystkich:
+        ostrz.append(
+            f"kadencje pokrywaja {pokryte} kolejek, a w danych jest {wszystkich} "
+            f"(od sezonu {zapisy[0]['sezon']}) - sprawdz trenerzy.csv"
+        )
+    return odcinki, ostrz
+
+
 def main():
     pliki = sys.argv[1:] or sorted(glob.glob(str(HERE / "[0-9][0-9][0-9][0-9]-[0-9][0-9].csv")))
     if not pliki:
@@ -283,11 +359,20 @@ def main():
         archiwum[nazwa] = {"mecze": mecze, "liczba_meczow": len(mecze)}
         print(f"[archiwum] {nazwa}: {len(mecze)} meczow (tylko H2H, bez pelnej analizy)")
 
+    odcinki, ostrz_kadencje = kadencje(sezony, archiwum)
+    wszystkie_ostrz += ostrz_kadencje
+    if odcinki:
+        z_danymi = [o for o in odcinki if not o["archiwalny"]]
+        print(f"Kadencje: {len(odcinki)} odcinkow "
+              f"({len(z_danymi)} z pelnymi statystykami, "
+              f"{len(odcinki) - len(z_danymi)} tylko wyniki)")
+
     out = {
         "druzyna": DRUZYNA,
         "metryki": METRYKI,
         "sezony": sezony,
         "archiwum": archiwum,
+        "kadencje": odcinki,
     }
     (HERE / "data.json").write_text(
         json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8"
