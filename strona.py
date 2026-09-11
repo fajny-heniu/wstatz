@@ -898,28 +898,61 @@ function renderZakresPorownania() {
 // Odcinki archiwalne (2022-2024) maja w danych same wyniki, wiec dostaja
 // bilans i punkty na mecz, a w kolumnach statystycznych myslnik - zgodnie
 // z zasada "puste pole to brak danych, nie zero".
+function meczeKadencji(odcinek) {
+  // Pula meczow z WSZYSTKICH czesci kadencji (kadencja przez lato ma dwie).
+  // Srednich nie wolno liczyc jako sredniej ze srednich - stad jedna pula,
+  // a nie sumowanie wynikow czastkowych.
+  const out = [];
+  (odcinek.czesci || []).forEach(c => {
+    const zrodlo = c.archiwalny ? DANE.archiwum[c.sezon] : DANE.sezony[c.sezon];
+    if (!zrodlo) return;
+    zrodlo.mecze.forEach(m => {
+      if (m.rezultat && m.kolejka >= c.od && m.kolejka <= c.do) out.push(m);
+    });
+  });
+  return out;
+}
+
+// Statystyki calej kadencji. Liczba meczow jest liczona OSOBNO DLA KAZDEJ
+// METRYKI (`nMetryk`), bo w jednej kadencji czesc meczow moze pochodzic
+// z archiwum, ktore ma tylko wyniki: Sopic ma bilans z 15 meczow, ale xG
+// tylko z 3. Jedna liczba "n" przy takiej kadencji kłamałaby o podstawie.
 function statystykiKadencji(odcinek) {
   if (!odcinek) return null;
-  if (!odcinek.archiwalny) return statystykiWZakresie(odcinek.sezon, odcinek.od, odcinek.do);
-
-  const zrodlo = DANE.archiwum[odcinek.sezon];
-  if (!zrodlo) return null;
-  const mecze = zrodlo.mecze.filter(m =>
-    m.rezultat && m.kolejka >= odcinek.od && m.kolejka <= odcinek.do);
+  const mecze = meczeKadencji(odcinek);
   if (!mecze.length) return null;
+
+  const nMetryk = {};
+  const srednia = (klucz) => {
+    const wart = mecze.filter(m => m[klucz] !== null && m[klucz] !== undefined).map(m => m[klucz]);
+    nMetryk[klucz] = wart.length;
+    return wart.length ? wart.reduce((a, b) => a + b, 0) / wart.length : null;
+  };
+
   const bilans = { W: 0, R: 0, P: 0 };
   mecze.forEach(m => bilans[m.rezultat]++);
+
+  const meczeZXg = mecze.filter(m => m.widzew_xg !== null && m.widzew_xg !== undefined);
+  const sumaGole = meczeZXg.reduce((s, m) => s + (m.widzew_gole ?? 0), 0);
+  const sumaXg = meczeZXg.reduce((s, m) => s + m.widzew_xg, 0);
+  nMetryk.nadwyzkaGoli = meczeZXg.length;
+
   return {
-    n: mecze.length, tylkoWyniki: true, bilans,
+    n: mecze.length, bilans, nMetryk,
     punktyNaMecz: (bilans.W * 3 + bilans.R) / mecze.length,
-    widzew_xg: null, rywal_xg: null, widzew_shots: null, widzew_sot: null,
-    widzew_bc: null, widzew_pass_pct: null, nadwyzkaGoli: null,
+    widzew_xg: srednia("widzew_xg"),
+    rywal_xg: srednia("rywal_xg"),
+    widzew_shots: srednia("widzew_shots"),
+    widzew_sot: srednia("widzew_sot"),
+    widzew_bc: srednia("widzew_bc"),
+    widzew_pass_pct: srednia("widzew_pass_pct"),
+    nadwyzkaGoli: meczeZXg.length ? sumaGole - sumaXg : null,
   };
 }
 
-// Krotkie nazwisko + skrocony sezon do podpisu wiersza w boksie. `.sez` ma
-// white-space:nowrap i flex:none, wiec dluzsze etykiety wychodza poza boks
-// (ta sama pulapka, co przy AE) - pelny opis idzie do linijki nad boksami.
+// Krotki podpis wiersza w boksie. `.sez` ma white-space:nowrap i flex:none,
+// wiec dluzsze etykiety wychodza poza boks - pelny opis idzie do linijki
+// nad boksami. Rok startu kadencji rozroznia dwa pobyty tego samego trenera.
 function kadencjaKrotko(o) {
   // Ostatni wyraz to nazwisko przy prawdziwym imieniu i nazwisku, ale nie
   // przy nazwie zastepczej ("Nowy trener" dawaloby "trener 26"). Skracamy
@@ -928,26 +961,38 @@ function kadencjaKrotko(o) {
   const ost = wyrazy[wyrazy.length - 1];
   const nazwa = (wyrazy.length > 1 && ost[0] === ost[0].toLocaleUpperCase("pl"))
     ? ost : o.trener;
-  return `${nazwa} ${o.sezon.slice(2, 4)}`;
+  return `${nazwa} ${o.od_sezon.slice(2, 4)}`;
 }
 
 function kadencjaPelnie(o) {
-  const ciagle = o.ciagle_od ? `, kadencja od ${o.ciagle_od}` : "";
-  return `${o.trener} (${o.sezon}, k${o.od}–${o.do}, ${o.n} m.${ciagle})`;
+  const zakres = o.przez_sezony
+    ? `${o.od_sezon} k${o.od_kolejka} – ${o.do_sezon} k${o.do_kolejka}`
+    : `${o.od_sezon}, k${o.od_kolejka}–${o.do_kolejka}`;
+  return `${o.trener} (${zakres}, ${o.n} m.)`;
 }
 
+// Sklad kadencji przez lato: "2025/26: 11 m. · 2026/27: 7 m." - podzial na
+// sezony nie ginie, tylko przestaje byc osobna jednostka porownania.
+function kadencjaSklad(o) {
+  return o.przez_sezony
+    ? o.czesci.map(c => `${c.sezon}: ${c.n} m.`).join(" · ")
+    : "";
+}
+
+// Wybrane kadencje - swiadomie NIE zapamietywane miedzy wizytami, tak samo
+// jak zakres kolejek w AE.
 let kadencjaA = null, kadencjaB = null;
 
 function renderKadencje() {
   const odcinki = DANE.kadencje || [];
   const grane = odcinki.map((o, i) => i).filter(i => odcinki[i].n > 0);
-  if (grane.length < 1) {
+  if (!grane.length) {
     return `<div class="zakres-panel"><p class="pusto">Brak danych o kadencjach
       trenerskich (plik trenerzy.csv).</p></div>`;
   }
-  // Domyslnie: ostatni odcinek Z ROZEGRANYMI MECZAMI przeciw poprzedniemu
-  // takiemu - nie po prostu ostatni w pliku, bo nowa kadencja moze istniec
-  // w danych, zanim rozegra pierwszy mecz (zapowiedzi w tabeli).
+  // Domyslnie: ostatnia kadencja Z ROZEGRANYMI MECZAMI przeciw poprzedniej
+  // takiej - nie po prostu ostatnia w pliku, bo nowy trener istnieje
+  // w danych, zanim poprowadzi pierwszy mecz (wiersze zapowiedzi).
   if (kadencjaA === null) kadencjaA = grane[grane.length - 1];
   if (kadencjaB === null) kadencjaB = grane.length > 1 ? grane[grane.length - 2] : grane[0];
 
@@ -956,7 +1001,7 @@ function renderKadencje() {
       kadencjaPelnie(o)}${o.n === 0 ? " — brak meczów" : ""}</option>`).join("");
 
   const selektory = `<div class="zakres-selektory kadencje-selektory">
-    <label>odcinek <select id="kadencjaA">${opcje(kadencjaA)}</select></label>
+    <label>kadencja <select id="kadencjaA">${opcje(kadencjaA)}</select></label>
     <label>zestaw z <select id="kadencjaB">${opcje(kadencjaB)}</select></label>
   </div>`;
 
@@ -964,15 +1009,29 @@ function renderKadencje() {
   const a = statystykiKadencji(oA), b = statystykiKadencji(oB);
   const etA = kadencjaKrotko(oA), etB = kadencjaKrotko(oB);
 
-  const braki = [oA, oB].filter((o, i) => (i === 0 ? a : b)?.tylkoWyniki);
-  const infoBraki = braki.length
-    ? ` Archiwum (${braki.map(o => o.sezon).join(", ")}) ma w danych tylko
-        wyniki, bez xG i statystyk — stąd myślniki.`
-    : "";
-  const info = `<p class="zakres-info">${kadencjaPelnie(oA)} · ${kadencjaPelnie(oB)}${infoBraki}</p>`;
+  // Metryki policzone z mniejszej liczby meczow niz cala kadencja - bo
+  // czesc meczow lezy w archiwum, ktore ma tylko wyniki. Nazwane wprost,
+  // zeby srednia z 3 meczow nie udawala sredniej z 15.
+  const niepelne = (o, s) => {
+    if (!s) return "";
+    const braki = [["widzew_xg", "xG"], ["rywal_xg", "xGA"], ["widzew_shots", "Strzały"],
+      ["widzew_sot", "Na bramkę"], ["widzew_bc", "W. szanse"], ["widzew_pass_pct", "% podań"]]
+      .filter(([k]) => (s.nMetryk[k] || 0) < s.n);
+    if (!braki.length) return "";
+    const ile = s.nMetryk[braki[0][0]] || 0;
+    return `<br>${kadencjaKrotko(o)}: ${braki.map(x => x[1]).join(", ")} ${
+      ile ? `tylko z ${ile} m.` : "bez danych"} — starsze sezony mają w archiwum same wyniki.`;
+  };
+
+  const skladA = kadencjaSklad(oA), skladB = kadencjaSklad(oB);
+  const info = `<p class="zakres-info">
+    ${kadencjaPelnie(oA)}${skladA ? ` — ${skladA}` : ""}<br>
+    ${kadencjaPelnie(oB)}${skladB ? ` — ${skladB}` : ""}
+    ${niepelne(oA, a)}${niepelne(oB, b)}
+  </p>`;
 
   const boksy = !a || !b
-    ? `<p class="pusto">Jeden z wybranych odcinków nie ma rozegranych meczów.</p>`
+    ? `<p class="pusto">Jedna z wybranych kadencji nie ma rozegranych meczów.</p>`
     : box("xG", etA, a.widzew_xg, etB, b.widzew_xg, 2) +
       box("xGA", etA, a.rywal_xg, etB, b.rywal_xg, 2, true) +
       box("Strzały", etA, a.widzew_shots, etB, b.widzew_shots, 1) +
@@ -1888,11 +1947,10 @@ const DEFINICJE_WYKRESOW = [
       ma tylko wyniki, nie xG, więc to jedyny czysto punktowy wykres.` },
   { id: "kadencje", etykieta: "Kadencje", fn: null,
     wyjasnienie: `Ten sam zestaw liczb co pasek średnich, tylko dla
-      <b>odcinka jednego trenera</b>. Kadencje trwające przez lato są
-      <b>dzielone na granicy sezonu</b> — między ostatnią i pierwszą
-      kolejką leży okno transferowe, więc to częściowo inna drużyna;
-      ciągłość widać w dopisku „kadencja od”. Liczba meczów jest zawsze
-      przy nazwie odcinka, bo <b>krótkie kadencje to mała próbka</b>
+      <b>całej kadencji jednego trenera</b> — także wtedy, gdy przechodzi
+      przez lato (skład kadencji sezon po sezonie jest wypisany niżej).
+      Liczba meczów jest zawsze przy nazwisku, bo <b>krótkie kadencje to
+      mała próbka</b>
       i różnice na 8 meczach mogą być szumem. Trenera zwalnia się zwykle
       w gorszym momencie, więc poprawa po zmianie jest częściowo
       spodziewana sama z siebie — to zapis tego, co się stało, nie ocena
