@@ -237,10 +237,16 @@ def kadencje(sezony, archiwum):
     (sezon, od_kolejki, trener) - koniec kadencji wynika z nastepnego
     wiersza, wiec nie da sie wpisac dziury ani nakladajacych sie okresow.
 
-    Kadencje przechodzace przez lato sa DZIELONE na granicy sezonu: miedzy
-    ostatnia kolejka a pierwsza nastepnego lezy okno transferowe, wiec to
-    czesciowo inna druzyna, nie jeden reżim. Ciaglosc nie ginie - odcinek
-    dostaje pole `ciagle_od` z sezonem, w ktorym ta kadencja sie zaczela.
+    Kadencja jest JEDNA CALOSCIA, nawet gdy przechodzi przez lato. Wczesniej
+    dzielilismy ja na sezony (argument: okno transferowe to czesciowo inna
+    druzyna) - odrzucone, bo produkowalo artefakty: Sopic k1-3 w 2025/26 to
+    3 mecze i 2.00 pkt/mecz, najlepszy wynik w calym zbiorze i kompletna
+    fikcja; ten sam Sopic w calosci to 15 meczow i 1.33. Podzial na sezony
+    zyje dalej jako `czesci` - do pokazania skladu kadencji, nie jako
+    osobne jednostki porownania.
+
+    Laczenie idzie PER WIERSZ CSV, nie per nazwisko: gdyby trener wrocil po
+    przerwie, to sa dwie osobne kadencje, nie jedna zlepiona po nazwisku.
     """
     sciezka = HERE / "trenerzy.csv"
     if not sciezka.exists():
@@ -265,7 +271,7 @@ def kadencje(sezony, archiwum):
         od_sezon, od_kolejka = r["sezon"], int(r["od_kolejki"])
         nast = zapisy[i + 1] if i + 1 < len(zapisy) else None
 
-        # Sezony objete ta kadencja: od jej startu do startu nastepnej
+        czesci = []
         ost_sezon = nast["sezon"] if nast else porzadek[-1]
         for sezon in porzadek[idx[od_sezon]: idx[ost_sezon] + 1]:
             mecze = wszystkie[sezon]["mecze"]
@@ -273,23 +279,29 @@ def kadencje(sezony, archiwum):
             if not kolejki:
                 continue
             start = od_kolejka if sezon == od_sezon else 1
-            if nast and sezon == nast["sezon"]:
-                koniec = int(nast["od_kolejki"]) - 1
-            else:
-                koniec = max(kolejki)
+            koniec = (int(nast["od_kolejki"]) - 1
+                      if nast and sezon == nast["sezon"] else max(kolejki))
             if koniec < start:
                 continue
             objete = [m for m in mecze if m["kolejka"] and start <= m["kolejka"] <= koniec]
-            odcinki.append({
-                "trener": trener,
-                "sezon": sezon,
-                "od": start,
-                "do": koniec,
+            czesci.append({
+                "sezon": sezon, "od": start, "do": koniec,
                 "n": sum(1 for m in objete if m["rezultat"]),
                 "n_kolejek": len(objete),
-                "ciagle_od": od_sezon if sezon != od_sezon else None,
                 "archiwalny": sezon in archiwum,
             })
+        if not czesci:
+            continue
+        odcinki.append({
+            "trener": trener,
+            "od_sezon": czesci[0]["sezon"], "od_kolejka": czesci[0]["od"],
+            "do_sezon": czesci[-1]["sezon"], "do_kolejka": czesci[-1]["do"],
+            "czesci": czesci,
+            "n": sum(c["n"] for c in czesci),
+            "n_kolejek": sum(c["n_kolejek"] for c in czesci),
+            "przez_sezony": len(czesci) > 1,
+            "ma_statystyki": any(not c["archiwalny"] for c in czesci),
+        })
 
     # Kontrola spojnosci: kazdy mecz w danych musi nalezec do dokladnie
     # jednej kadencji. Blad w kolumnie od_kolejki wyjdzie tutaj, zamiast
@@ -362,10 +374,14 @@ def main():
     odcinki, ostrz_kadencje = kadencje(sezony, archiwum)
     wszystkie_ostrz += ostrz_kadencje
     if odcinki:
-        z_danymi = [o for o in odcinki if not o["archiwalny"]]
-        print(f"Kadencje: {len(odcinki)} odcinkow "
-              f"({len(z_danymi)} z pelnymi statystykami, "
+        z_danymi = [o for o in odcinki if o["ma_statystyki"]]
+        print(f"Kadencje: {len(odcinki)} "
+              f"({len(z_danymi)} ze statystykami, "
               f"{len(odcinki) - len(z_danymi)} tylko wyniki)")
+        for o in odcinki:
+            sklad = " + ".join(f"{c['sezon']} k{c['od']}-{c['do']} ({c['n']} m.)"
+                               for c in o["czesci"])
+            print(f"  {o['trener']:<20} {o['n']:>3} m.  {sklad}")
 
     out = {
         "druzyna": DRUZYNA,
