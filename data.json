@@ -6054,5 +6054,117 @@
       ],
       "liczba_meczow": 34
     }
-  }
+  },
+  "kadencje": [
+    {
+      "trener": "Janusz Niedźwiedź",
+      "sezon": "2022/23",
+      "od": 1,
+      "do": 34,
+      "n": 34,
+      "n_kolejek": 34,
+      "ciagle_od": null,
+      "archiwalny": true
+    },
+    {
+      "trener": "Janusz Niedźwiedź",
+      "sezon": "2023/24",
+      "od": 1,
+      "do": 7,
+      "n": 7,
+      "n_kolejek": 7,
+      "ciagle_od": "2022/23",
+      "archiwalny": true
+    },
+    {
+      "trener": "Daniel Myśliwiec",
+      "sezon": "2023/24",
+      "od": 8,
+      "do": 34,
+      "n": 27,
+      "n_kolejek": 27,
+      "ciagle_od": null,
+      "archiwalny": true
+    },
+    {
+      "trener": "Daniel Myśliwiec",
+      "sezon": "2024/25",
+      "od": 1,
+      "do": 22,
+      "n": 22,
+      "n_kolejek": 22,
+      "ciagle_od": "2023/24",
+      "archiwalny": true
+    },
+    {
+      "trener": "Željko Sopić",
+      "sezon": "2024/25",
+      "od": 23,
+      "do": 34,
+      "n": 12,
+      "n_kolejek": 12,
+      "ciagle_od": null,
+      "archiwalny": true
+    },
+    {
+      "trener": "Željko Sopić",
+      "sezon": "2025/26",
+      "od": 1,
+      "do": 3,
+      "n": 3,
+      "n_kolejek": 3,
+      "ciagle_od": "2024/25",
+      "archiwalny": false
+    },
+    {
+      "trener": "Patryk Czubak",
+      "sezon": "2025/26",
+      "od": 4,
+      "do": 11,
+      "n": 8,
+      "n_kolejek": 8,
+      "ciagle_od": null,
+      "archiwalny": false
+    },
+    {
+      "trener": "Igor Jovicević",
+      "sezon": "2025/26",
+      "od": 12,
+      "do": 23,
+      "n": 12,
+      "n_kolejek": 12,
+      "ciagle_od": null,
+      "archiwalny": false
+    },
+    {
+      "trener": "Aleksandar Vuković",
+      "sezon": "2025/26",
+      "od": 24,
+      "do": 34,
+      "n": 11,
+      "n_kolejek": 11,
+      "ciagle_od": null,
+      "archiwalny": false
+    },
+    {
+      "trener": "Aleksandar Vuković",
+      "sezon": "2026/27",
+      "od": 1,
+      "do": 7,
+      "n": 7,
+      "n_kolejek": 7,
+      "ciagle_od": "2025/26",
+      "archiwalny": false
+    },
+    {
+      "trener": "Nowy trener",
+      "sezon": "2026/27",
+      "od": 8,
+      "do": 9,
+      "n": 0,
+      "n_kolejek": 2,
+      "ciagle_od": null,
+      "archiwalny": false
+    }
+  ]
 }
