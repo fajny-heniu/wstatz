@@ -139,17 +139,34 @@ def tryb_test(args):
 # ---------------------------------------------------------------------------
 # tryb --lista: kody meczow ze strony wynikow sezonu
 # ---------------------------------------------------------------------------
-def rozwin_liste(page, klikniecia=12):
-    """Klika 'Pokaz wiecej meczow', az zniknie albo skoncza sie proby."""
+def rozwin_liste(page, klikniecia=40, sel=None):
+    """Klika 'Pokaz wiecej meczow', az lista przestanie rosnac.
+
+    Sam licznik klikniec nie wystarcza: przycisk bywa pod ekranem, wiec
+    przed kazda proba przewijamy na dol. Warunkiem konca jest brak przyrostu
+    wierszy, nie wykonanie N obrotow.
+    """
+    bez_zmian = 0
+    poprzednio = -1
     for _ in range(klikniecia):
+        ile = page.locator(sel).count() if sel else 0
+        page.mouse.wheel(0, 20000)
+        page.wait_for_timeout(600)
         try:
-            link = page.locator("a.event__more, .event__more").first
-            if link.count() == 0 or not link.is_visible():
-                break
-            link.click(timeout=4000)
-            page.wait_for_timeout(1200)
+            link = page.locator("a.event__more, .event__more, [class*='event__more']").first
+            if link.count() > 0:
+                link.scroll_into_view_if_needed(timeout=3000)
+                link.click(timeout=4000)
+                page.wait_for_timeout(1600)
         except Exception:
+            pass
+        nowe = page.locator(sel).count() if sel else 0
+        print(f"    wierszy: {nowe}", end="\r")
+        bez_zmian = bez_zmian + 1 if nowe == ile == poprzednio else 0
+        if bez_zmian >= 2:
             break
+        poprzednio = ile
+    print()
 
 
 JS_WIERSZE = r"""(sel) => [...document.querySelectorAll(sel)].map(e => ({
@@ -162,18 +179,18 @@ def tryb_lista(args):
     if not args.url or not args.url.startswith("http"):
         A.stop("Podaj --url do strony WYNIKOW sezonu (adres z paska przegladarki).")
     naglowki, wiersze = wczytaj(HERE / args.csv)
-    wiersze.sort(key=lambda w: int(w["round"]), reverse=True)  # najnowszy pierwszy
+    wiersze.sort(key=lambda w: int(w["round"]), reverse=True)
 
     pw, br, page = A.otworz_przegladarke(args.widok)
     try:
         page.goto(args.url, wait_until="domcontentloaded", timeout=45000)
         A.zamknij_banery(page)
         page.wait_for_timeout(2500)
-        rozwin_liste(page, args.klikniecia)
         sel = A.SELEKTORY["wiersz_meczu"][0]
+        if page.locator(sel).count() == 0:
+            sel = A.SELEKTORY["wiersz_meczu"][1]
+        rozwin_liste(page, args.klikniecia, sel)
         surowe = page.evaluate(JS_WIERSZE, sel)
-        if not surowe:
-            surowe = page.evaluate(JS_WIERSZE, A.SELEKTORY["wiersz_meczu"][1])
     finally:
         br.close()
         pw.stop()
@@ -187,32 +204,47 @@ def tryb_lista(args):
         m = re.match(r"g_1_([A-Za-z0-9]{8})$", r["id"])
         if not m:
             continue
+        data = next((t for t in r["tekst"] if re.fullmatch(r"\d{2}\.\d{2}\.?", t)), None)
         gole = [t for t in r["tekst"] if re.fullmatch(r"\d+", t)]
-        nasze.append({"mid": m.group(1), "tekst": r["tekst"], "gole": gole[-2:]})
+        nasze.append({"mid": m.group(1), "data": data, "gole": gole[-2:]})
 
     print(f"\n  wierszy na stronie: {len(surowe)}, meczow z '{args.druzyna}': {len(nasze)}, "
           f"wierszy w CSV: {len(wiersze)}")
-    if len(nasze) != len(wiersze):
-        print("  UWAGA: liczby sie nie zgadzaja. Lista moze nie byc rozwinieta do konca\n"
-              "  (--klikniecia WIECEJ) albo zawierac mecze pucharowe.")
+    if len(nasze) < len(wiersze):
+        print("  UWAGA: mniej meczow niz wierszy w CSV - lista pewnie nie rozwinela sie\n"
+              "  do konca. Sprobuj --klikniecia 60.")
 
-    # Kolejnosc na stronie = od najnowszego. Parowanie sprawdzamy WYNIKIEM,
-    # zeby przelozony mecz nie przesunal cichcem calej listy.
+    # Parowanie po DACIE, nie po kolejnosci na stronie. Strona sortuje mecze
+    # po dacie, a CSV po numerze kolejki - przy przelozonym meczu (k31 zagrana
+    # po k32) te dwa porzadki sie rozjezdzaja i cicha zamiana kodow wpisalaby
+    # statystyki do zlych wierszy. Wynik meczu zostaje jako kontrola.
+    wg_daty = {}
+    for r in nasze:
+        wg_daty.setdefault((r["data"] or "").rstrip("."), []).append(r)
+
     pary, zgodne, watpliwe = [], 0, []
-    print("\n  Parowanie (sprawdzane wynikiem):\n")
-    for w, r in zip(wiersze, nasze):
+    print("\n  Parowanie po dacie (wynik jako kontrola):\n")
+    for w in wiersze:
+        _, mies, dzien = w["date"].split("-")
+        kandydaci = wg_daty.get(f"{dzien}.{mies}", [])
         z_csv = [x.strip() for x in (w["score_ft"] or "").split(":")]
-        ok = len(r["gole"]) == 2 and r["gole"] == z_csv
+        trafiony = next((r for r in kandydaci if r["gole"] == z_csv), None)
+        if trafiony is None and len(kandydaci) == 1:
+            trafiony = kandydaci[0]     # data pasuje, wynik nie - zglosimy nizej
+        ok = trafiony is not None and trafiony["gole"] == z_csv
         zgodne += ok
         if not ok:
             watpliwe.append(w["round"])
-        pary.append({"round": w["round"], "date": w["date"], "mid": r["mid"],
-                     "home": w["home_team"], "away": w["away_team"], "score": w["score_ft"]})
+        if trafiony is not None:
+            kandydaci.remove(trafiony)
+            pary.append({"round": w["round"], "date": w["date"], "mid": trafiony["mid"],
+                         "home": w["home_team"], "away": w["away_team"], "score": w["score_ft"]})
         print(f"    k{w['round']:>2}  {w['date']}  {w['home_team'][:20]:<20} - "
-              f"{w['away_team'][:20]:<20} CSV {w['score_ft']:<5} strona {':'.join(r['gole']) or '?':<5}"
-              f" {r['mid']}  {'' if ok else '<<< SPRAWDZ'}")
+              f"{w['away_team'][:20]:<20} CSV {w['score_ft']:<5} "
+              f"strona {(':'.join(trafiony['gole']) if trafiony else '-'):<5} "
+              f"{trafiony['mid'] if trafiony else '':<9} {'' if ok else '<<< SPRAWDZ'}")
 
-    print(f"\n  wynik zgodny w {zgodne}/{len(pary)} parach")
+    print(f"\n  sparowanych: {len(pary)}/{len(wiersze)}, wynik zgodny w {zgodne}")
     if watpliwe:
         print(f"  do sprawdzenia recznie: kolejki {', '.join(watpliwe)}")
         print("  NIE uruchamiaj --pobierz, dopoki to sie nie wyjasni.")
