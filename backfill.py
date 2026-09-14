@@ -140,7 +140,12 @@ def tryb_test(args):
 # tryb --lista: kody meczow ze strony wynikow sezonu
 # ---------------------------------------------------------------------------
 JS_WIECEJ = r"""() => {
-  const pasuje = (t) => /poka(z|ż)\s+wi(e|ę)cej|show more/i.test(t || '');
+  // Tekst musi BYC tym napisem, nie tylko go zawierac: opakowanie reklamy
+  // tez "zawiera" te fraze i wczesniej zostalo klikniete zamiast przycisku.
+  const pasuje = (t) => {
+    const s = (t || '').replace(/\s+/g, ' ').trim();
+    return s.length <= 40 && /^(poka(z|ż) wi(e|ę)cej|show more)/i.test(s);
+  };
   const kandydaci = [...document.querySelectorAll('a,button,div,span')]
     .filter(e => e.children.length <= 2 && pasuje(e.textContent))
     .map(e => {
@@ -163,6 +168,12 @@ JS_WIECEJ = r"""() => {
           tekst: (wybor.e.textContent || '').trim().slice(0, 40),
           kandydatow: kandydaci.length};
 }"""
+
+
+JS_WIERSZE = r"""(sel) => [...document.querySelectorAll(sel)].map(e => ({
+  id: e.id || '',
+  tekst: (e.innerText || '').split('\n').map(s => s.trim()).filter(Boolean),
+}))"""
 
 
 def policz(page, sel, sekundy=10):
