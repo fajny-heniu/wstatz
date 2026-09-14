@@ -141,22 +141,28 @@ def tryb_test(args):
 # ---------------------------------------------------------------------------
 JS_WIECEJ = r"""() => {
   const pasuje = (t) => /poka(z|ż)\s+wi(e|ę)cej|show more/i.test(t || '');
-  const el = [...document.querySelectorAll('a,button,div,span')]
+  const kandydaci = [...document.querySelectorAll('a,button,div,span')]
     .filter(e => e.children.length <= 2 && pasuje(e.textContent))
-    .pop();
-  if (!el) return null;
-  el.scrollIntoView({block: 'center'});
-  el.click();
-  return {tag: el.tagName, cls: (el.className || '').toString().slice(0, 60),
-          href: el.getAttribute('href') || '',
-          tekst: (el.textContent || '').trim().slice(0, 40)};
+    .map(e => {
+      const href = e.getAttribute('href') || '';
+      const cls = (e.className || '').toString();
+      // Odrzucamy odnosniki prowadzace na INNA strone (np. zakladka MECZE,
+      // czyli spotkania nadchodzace - w zakonczonym sezonie pusta).
+      const nawigacyjny = href && href !== '#' && !href.startsWith('javascript');
+      return {e, href, cls, nawigacyjny,
+              punkty: (cls.includes('event__more') ? 2 : 0) + (nawigacyjny ? -3 : 1)};
+    })
+    .sort((a, b) => b.punkty - a.punkty);
+  const wybor = kandydaci.find(k => !k.nawigacyjny) || null;
+  if (!wybor) {
+    return {brak: true, odrzucone: kandydaci.map(k => k.href).slice(0, 4)};
+  }
+  wybor.e.scrollIntoView({block: 'center'});
+  wybor.e.click();
+  return {tag: wybor.e.tagName, cls: wybor.cls.slice(0, 60), href: wybor.href,
+          tekst: (wybor.e.textContent || '').trim().slice(0, 40),
+          kandydatow: kandydaci.length};
 }"""
-
-
-JS_WIERSZE = r"""(sel) => [...document.querySelectorAll(sel)].map(e => ({
-  id: e.id || '',
-  tekst: (e.innerText || '').split('\n').map(s => s.trim()).filter(Boolean),
-}))"""
 
 
 def policz(page, sel, sekundy=10):
@@ -197,8 +203,12 @@ def rozwin_liste(page, klikniecia=40, sel=None):
             klikniety = page.evaluate(JS_WIECEJ)
         except Exception:
             klikniety = None
-        if klikniety is None:
-            print("    brak przycisku 'pokaz wiecej' - to juz cala lista")
+        if klikniety is None or klikniety.get("brak"):
+            if klikniety and klikniety.get("odrzucone"):
+                print(f"    tylko odnosniki nawigacyjne {klikniety['odrzucone']}"
+                      f" - to juz cala lista")
+            else:
+                print("    brak przycisku 'pokaz wiecej' - to juz cala lista")
             break
         if proba == 0:
             print(f"    przycisk: <{klikniety['tag'].lower()}> {klikniety['tekst']!r}"
