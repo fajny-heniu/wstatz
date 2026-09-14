@@ -139,40 +139,47 @@ def tryb_test(args):
 # ---------------------------------------------------------------------------
 # tryb --lista: kody meczow ze strony wynikow sezonu
 # ---------------------------------------------------------------------------
+JS_WIECEJ = r"""() => {
+  const pasuje = (t) => /poka(z|ż)\s+wi(e|ę)cej|show more/i.test(t || '');
+  const el = [...document.querySelectorAll('a,button,div,span')]
+    .filter(e => e.children.length <= 2 && pasuje(e.textContent))
+    .pop();
+  if (!el) return null;
+  el.scrollIntoView({block: 'center'});
+  el.click();
+  return {tag: el.tagName, cls: (el.className || '').toString().slice(0, 60),
+          tekst: (el.textContent || '').trim().slice(0, 40)};
+}"""
+
+
 def rozwin_liste(page, klikniecia=40, sel=None):
     """Klika 'Pokaz wiecej meczow', az lista przestanie rosnac.
 
-    Sam licznik klikniec nie wystarcza: przycisk bywa pod ekranem, wiec
-    przed kazda proba przewijamy na dol. Warunkiem konca jest brak przyrostu
-    wierszy, nie wykonanie N obrotow.
+    Przycisk szukany po TRESCI, nie po klasie - klasy Flashscore maja losowe
+    sufiksy i zmieniaja sie przy kazdym wdrozeniu. Warunkiem konca jest brak
+    przyrostu wierszy, nie wykonanie N obrotow.
     """
-    bez_zmian = 0
     poprzednio = -1
-    for _ in range(klikniecia):
+    for proba in range(klikniecia):
+        page.mouse.wheel(0, 30000)
+        page.wait_for_timeout(500)
         ile = page.locator(sel).count() if sel else 0
-        page.mouse.wheel(0, 20000)
-        page.wait_for_timeout(600)
-        try:
-            link = page.locator("a.event__more, .event__more, [class*='event__more']").first
-            if link.count() > 0:
-                link.scroll_into_view_if_needed(timeout=3000)
-                link.click(timeout=4000)
-                page.wait_for_timeout(1600)
-        except Exception:
-            pass
-        nowe = page.locator(sel).count() if sel else 0
-        print(f"    wierszy: {nowe}", end="\r")
-        bez_zmian = bez_zmian + 1 if nowe == ile == poprzednio else 0
-        if bez_zmian >= 2:
+        if proba == 0 or ile != poprzednio:
+            print(f"    wierszy: {ile}")
+        if ile == poprzednio:
             break
         poprzednio = ile
-    print()
-
-
-JS_WIERSZE = r"""(sel) => [...document.querySelectorAll(sel)].map(e => ({
-  id: e.id || '',
-  tekst: (e.innerText || '').split('\n').map(s => s.trim()).filter(Boolean),
-}))"""
+        try:
+            klikniety = page.evaluate(JS_WIECEJ)
+        except Exception:
+            klikniety = None
+        if klikniety is None:
+            print("    nie znaleziono przycisku 'pokaz wiecej' - koniec listy "
+                  "albo zmieniona strona")
+            break
+        if proba == 0:
+            print(f"    przycisk: <{klikniety['tag'].lower()}> {klikniety['tekst']!r}")
+        page.wait_for_timeout(1800)
 
 
 def tryb_lista(args):
@@ -204,7 +211,10 @@ def tryb_lista(args):
         m = re.match(r"g_1_([A-Za-z0-9]{8})$", r["id"])
         if not m:
             continue
-        data = next((t for t in r["tekst"] if re.fullmatch(r"\d{2}\.\d{2}\.?", t)), None)
+        # Flashscore pisze date roznie: "24.05.", "24.05. 20:15", czasem z rokiem.
+        # Szukamy wzorca wewnatrz linii, nie calej linii.
+        mdata = re.search(r"(\d{2})\.(\d{2})\.", " | ".join(r["tekst"]))
+        data = f"{mdata.group(1)}.{mdata.group(2)}" if mdata else None
         gole = [t for t in r["tekst"] if re.fullmatch(r"\d+", t)]
         nasze.append({"mid": m.group(1), "data": data, "gole": gole[-2:]})
 
@@ -220,7 +230,7 @@ def tryb_lista(args):
     # statystyki do zlych wierszy. Wynik meczu zostaje jako kontrola.
     wg_daty = {}
     for r in nasze:
-        wg_daty.setdefault((r["data"] or "").rstrip("."), []).append(r)
+        wg_daty.setdefault(r["data"], []).append(r)
 
     pary, zgodne, watpliwe = [], 0, []
     print("\n  Parowanie po dacie (wynik jako kontrola):\n")
