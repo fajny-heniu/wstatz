@@ -148,6 +148,7 @@ JS_WIECEJ = r"""() => {
   el.scrollIntoView({block: 'center'});
   el.click();
   return {tag: el.tagName, cls: (el.className || '').toString().slice(0, 60),
+          href: el.getAttribute('href') || '',
           tekst: (el.textContent || '').trim().slice(0, 40)};
 }"""
 
@@ -200,7 +201,24 @@ def rozwin_liste(page, klikniecia=40, sel=None):
             print("    brak przycisku 'pokaz wiecej' - to juz cala lista")
             break
         if proba == 0:
-            print(f"    przycisk: <{klikniety['tag'].lower()}> {klikniety['tekst']!r}")
+            print(f"    przycisk: <{klikniety['tag'].lower()}> {klikniety['tekst']!r}"
+                  f" href={klikniety.get('href')!r}")
+        page.wait_for_timeout(2000)
+        # Diagnostyka: jesli lista znika, chcemy wiedziec, gdzie wyladowalismy
+        # i czy wiersze nie siedza pod innym selektorem.
+        po = page.locator(sel).count()
+        if po == 0:
+            zapas = A.SELEKTORY["wiersz_meczu"][1]
+            print(f"    po kliknieciu: {sel} -> 0, {zapas} -> {page.locator(zapas).count()}")
+            print(f"    adres: {page.url}")
+            ile_id = page.evaluate("() => document.querySelectorAll('[id^=\"g_1_\"]').length")
+            print(f"    elementow o id g_1_*: {ile_id}")
+            if ile_id > 0:
+                sel = '[id^="g_1_"]'
+                print(f"    przechodze na selektor {sel}")
+            else:
+                break
+    return sel
 
 
 def tryb_lista(args):
@@ -217,7 +235,7 @@ def tryb_lista(args):
         sel = A.SELEKTORY["wiersz_meczu"][0]
         if page.locator(sel).count() == 0:
             sel = A.SELEKTORY["wiersz_meczu"][1]
-        rozwin_liste(page, args.klikniecia, sel)
+        sel = rozwin_liste(page, args.klikniecia, sel) or sel
         surowe = page.evaluate(JS_WIERSZE, sel)
     finally:
         br.close()
