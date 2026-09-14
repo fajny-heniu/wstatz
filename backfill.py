@@ -146,13 +146,15 @@ JS_WIECEJ = r"""() => {
     const s = (t || '').replace(/\s+/g, ' ').trim();
     return s.length <= 40 && /^(poka(z|ż) wi(e|ę)cej|show more)/i.test(s);
   };
+  document.querySelectorAll('[data-wstatz-wiecej]').forEach(
+    e => e.removeAttribute('data-wstatz-wiecej'));
   const kandydaci = [...document.querySelectorAll('a,button,div,span')]
     .filter(e => e.children.length <= 2 && pasuje(e.textContent))
     .map(e => {
       const href = e.getAttribute('href') || '';
       const cls = (e.className || '').toString();
-      // Odrzucamy odnosniki prowadzace na INNA strone (np. zakladka MECZE,
-      // czyli spotkania nadchodzace - w zakonczonym sezonie pusta).
+      // Odrzucamy odnosniki prowadzace na INNA strone (zakladka MECZE to
+      // spotkania nadchodzace - w zakonczonym sezonie pusta).
       const nawigacyjny = href && href !== '#' && !href.startsWith('javascript');
       return {e, href, cls, nawigacyjny,
               punkty: (cls.includes('event__more') ? 2 : 0) + (nawigacyjny ? -3 : 1)};
@@ -162,10 +164,12 @@ JS_WIECEJ = r"""() => {
   if (!wybor) {
     return {brak: true, odrzucone: kandydaci.map(k => k.href).slice(0, 4)};
   }
+  // Tylko ZNACZYMY element - klikac bedzie Playwright prawdziwym zdarzeniem
+  // myszy. Wywolanie el.click() z JS nie uruchamialo doladowania.
+  wybor.e.setAttribute('data-wstatz-wiecej', '1');
   wybor.e.scrollIntoView({block: 'center'});
-  wybor.e.click();
   return {tag: wybor.e.tagName, cls: wybor.cls.slice(0, 60), href: wybor.href,
-          tekst: (wybor.e.textContent || '').trim().slice(0, 40),
+          tekst: (wybor.e.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40),
           kandydatow: kandydaci.length};
 }"""
 
@@ -224,6 +228,13 @@ def rozwin_liste(page, klikniecia=40, sel=None):
         if proba == 0:
             print(f"    przycisk: <{klikniety['tag'].lower()}> {klikniety['tekst']!r}"
                   f" href={klikniety.get('href')!r}")
+        try:
+            cel = page.locator('[data-wstatz-wiecej]').first
+            cel.scroll_into_view_if_needed(timeout=3000)
+            cel.click(timeout=5000)
+        except Exception as e:
+            print(f"    nie udalo sie kliknac: {type(e).__name__}")
+            break
         page.wait_for_timeout(2000)
         # Diagnostyka: jesli lista znika, chcemy wiedziec, gdzie wyladowalismy
         # i czy wiersze nie siedza pod innym selektorem.
