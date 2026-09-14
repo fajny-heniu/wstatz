@@ -152,6 +152,30 @@ JS_WIECEJ = r"""() => {
 }"""
 
 
+JS_WIERSZE = r"""(sel) => [...document.querySelectorAll(sel)].map(e => ({
+  id: e.id || '',
+  tekst: (e.innerText || '').split('\n').map(s => s.trim()).filter(Boolean),
+}))"""
+
+
+def policz(page, sel, sekundy=10):
+    """Liczba wierszy, z czekaniem az lista sie odbuduje po przerysowaniu.
+
+    Po kliknieciu 'pokaz wiecej' Flashscore na chwile usuwa cala liste z DOM -
+    sztywne czekanie trafialo w ta dziure i widzialo zero wierszy.
+    """
+    najlepsze = 0
+    for _ in range(int(sekundy * 2)):
+        ile = page.locator(sel).count()
+        najlepsze = max(najlepsze, ile)
+        if ile > 0 and ile == najlepsze:
+            page.wait_for_timeout(500)
+            if page.locator(sel).count() == ile:
+                return ile
+        page.wait_for_timeout(500)
+    return najlepsze
+
+
 def rozwin_liste(page, klikniecia=40, sel=None):
     """Klika 'Pokaz wiecej meczow', az lista przestanie rosnac.
 
@@ -162,24 +186,21 @@ def rozwin_liste(page, klikniecia=40, sel=None):
     poprzednio = -1
     for proba in range(klikniecia):
         page.mouse.wheel(0, 30000)
-        page.wait_for_timeout(500)
-        ile = page.locator(sel).count() if sel else 0
-        if proba == 0 or ile != poprzednio:
-            print(f"    wierszy: {ile}")
-        if ile == poprzednio:
-            break
+        page.wait_for_timeout(400)
+        ile = policz(page, sel)
+        print(f"    wierszy: {ile}")
+        if ile <= poprzednio:
+            break                      # przyrostu nie ma - koniec listy
         poprzednio = ile
         try:
             klikniety = page.evaluate(JS_WIECEJ)
         except Exception:
             klikniety = None
         if klikniety is None:
-            print("    nie znaleziono przycisku 'pokaz wiecej' - koniec listy "
-                  "albo zmieniona strona")
+            print("    brak przycisku 'pokaz wiecej' - to juz cala lista")
             break
         if proba == 0:
             print(f"    przycisk: <{klikniety['tag'].lower()}> {klikniety['tekst']!r}")
-        page.wait_for_timeout(1800)
 
 
 def tryb_lista(args):
