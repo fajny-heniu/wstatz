@@ -3,3 +3,6 @@ zrzuty/
 __pycache__/
 .DS_Store
 .pytest_cache/
+backfill-pary.json
+*.bak
+zrzuty/
