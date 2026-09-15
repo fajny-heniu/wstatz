@@ -1,35 +1,35 @@
-season,round,date,competition,venue,home_team,away_team,score_ht,score_ft,xg_home,xg_away,shots_home,shots_away,sot_home,sot_away,bc_home,bc_away,passes_home,passes_away,passes_acc_home,passes_acc_away,pass_pct_home,pass_pct_away,poss_home,poss_away,position,fixture_id
-2024/25,34,2025-05-24,Ekstraklasa,A,Raków Częstochowa,Widzew Łódź,,2:1,,,,,,,,,,,,,,,,,,1203255
-2024/25,33,2025-05-19,Ekstraklasa,H,Widzew Łódź,Puszcza Niepołomice,,2:0,,,,,,,,,,,,,,,,,,1203245
-2024/25,32,2025-05-10,Ekstraklasa,A,Zaglebie Lubin,Widzew Łódź,,2:1,,,,,,,,,,,,,,,,,,1203231
-2024/25,31,2025-05-15,Ekstraklasa,H,Widzew Łódź,Legia Warszawa,,0:2,,,,,,,,,,,,,,,,,,1203227
-2024/25,30,2025-04-27,Ekstraklasa,A,Gornik Zabrze,Widzew Łódź,,0:0,,,,,,,,,,,,,,,,,,1203212
-2024/25,29,2025-04-19,Ekstraklasa,H,Widzew Łódź,Motor Lublin,,1:2,,,,,,,,,,,,,,,,,,1203209
-2024/25,28,2025-04-11,Ekstraklasa,A,Korona Kielce,Widzew Łódź,,2:1,,,,,,,,,,,,,,,,,,1203196
-2024/25,27,2025-04-04,Ekstraklasa,H,Widzew Łódź,Lechia Gdansk,,2:0,,,,,,,,,,,,,,,,,,1203191
-2024/25,26,2025-03-28,Ekstraklasa,A,Piast Gliwice,Widzew Łódź,,0:2,,,,,,,,,,,,,,,,,,1203182
-2024/25,25,2025-03-15,Ekstraklasa,H,Widzew Łódź,GKS Katowice,,1:0,,,,,,,,,,,,,,,,,,1203174
-2024/25,24,2025-03-09,Ekstraklasa,H,Widzew Łódź,Jagiellonia,,0:1,,,,,,,,,,,,,,,,,,1203164
-2024/25,23,2025-02-28,Ekstraklasa,A,Radomiak Radom,Widzew Łódź,,1:1,,,,,,,,,,,,,,,,,,1203154
-2024/25,22,2025-02-22,Ekstraklasa,H,Widzew Łódź,Pogon Szczecin,,0:4,,,,,,,,,,,,,,,,,,1203147
-2024/25,21,2025-02-15,Ekstraklasa,A,Slask Wroclaw,Widzew Łódź,,3:0,,,,,,,,,,,,,,,,,,1203138
-2024/25,20,2025-02-09,Ekstraklasa,H,Widzew Łódź,Cracovia Krakow,,1:1,,,,,,,,,,,,,,,,,,1203129
-2024/25,19,2025-01-31,Ekstraklasa,A,Lech Poznan,Widzew Łódź,,4:1,,,,,,,,,,,,,,,,,,1203116
-2024/25,18,2024-12-07,Ekstraklasa,H,Widzew Łódź,Stal Mielec,,2:1,,,,,,,,,,,,,,,,,,1203111
-2024/25,17,2024-11-30,Ekstraklasa,H,Widzew Łódź,Raków Częstochowa,,2:3,,,,,,,,,,,,,,,,,,1203101
-2024/25,16,2024-11-25,Ekstraklasa,A,Puszcza Niepołomice,Widzew Łódź,,2:0,,,,,,,,,,,,,,,,,,1203091
-2024/25,15,2024-11-09,Ekstraklasa,H,Widzew Łódź,Zaglebie Lubin,,2:0,,,,,,,,,,,,,,,,,,1203083
-2024/25,14,2024-11-03,Ekstraklasa,A,Legia Warszawa,Widzew Łódź,,2:1,,,,,,,,,,,,,,,,,,1203071
-2024/25,13,2024-10-27,Ekstraklasa,H,Widzew Łódź,Gornik Zabrze,,0:2,,,,,,,,,,,,,,,,,,1203065
-2024/25,12,2024-10-19,Ekstraklasa,A,Motor Lublin,Widzew Łódź,,3:4,,,,,,,,,,,,,,,,,,1203055
-2024/25,11,2024-10-04,Ekstraklasa,H,Widzew Łódź,Korona Kielce,,0:1,,,,,,,,,,,,,,,,,,1203047
-2024/25,10,2024-09-27,Ekstraklasa,A,Lechia Gdansk,Widzew Łódź,,1:1,,,,,,,,,,,,,,,,,,1203035
-2024/25,9,2024-09-21,Ekstraklasa,H,Widzew Łódź,Piast Gliwice,,1:0,,,,,,,,,,,,,,,,,,1203030
-2024/25,8,2024-09-13,Ekstraklasa,A,GKS Katowice,Widzew Łódź,,2:2,,,,,,,,,,,,,,,,,,1203014
-2024/25,7,2024-09-01,Ekstraklasa,A,Jagiellonia,Widzew Łódź,,1:0,,,,,,,,,,,,,,,,,,1203005
-2024/25,6,2024-08-23,Ekstraklasa,H,Widzew Łódź,Radomiak Radom,,3:2,,,,,,,,,,,,,,,,,,1203002
-2024/25,5,2024-08-17,Ekstraklasa,A,Pogon Szczecin,Widzew Łódź,,2:0,,,,,,,,,,,,,,,,,,1202991
-2024/25,4,2024-08-11,Ekstraklasa,H,Widzew Łódź,Slask Wroclaw,,0:0,,,,,,,,,,,,,,,,,,1202985
-2024/25,3,2024-08-05,Ekstraklasa,A,Cracovia Krakow,Widzew Łódź,,1:3,,,,,,,,,,,,,,,,,,1202968
-2024/25,2,2024-07-27,Ekstraklasa,H,Widzew Łódź,Lech Poznan,,2:1,,,,,,,,,,,,,,,,,,1202967
-2024/25,1,2024-07-22,Ekstraklasa,A,Stal Mielec,Widzew Łódź,,1:1,,,,,,,,,,,,,,,,,,1202957
+season,round,date,competition,venue,home_team,away_team,score_ht,score_ft,xg_home,xg_away,shots_home,shots_away,sot_home,sot_away,bc_home,bc_away,passes_home,passes_away,passes_acc_home,passes_acc_away,pass_pct_home,pass_pct_away,poss_home,poss_away,position,fixture_id,flashscore_id
+2024/25,34,2025-05-24,Ekstraklasa,A,Raków Częstochowa,Widzew Łódź,,2:1,3.29,0.48,18,6,8,2,7,1,387,397,338,329,87,83,49,51,,1203255,t4PQCVOO
+2024/25,33,2025-05-19,Ekstraklasa,H,Widzew Łódź,Puszcza Niepołomice,,2:0,1.71,0.69,18,11,3,3,2,1,392,440,330,351,84,80,48,52,,1203245,4fGa01Z1
+2024/25,32,2025-05-10,Ekstraklasa,A,Zaglebie Lubin,Widzew Łódź,,2:1,1.04,0.89,14,16,5,3,2,1,256,454,186,398,73,88,36,64,,1203231,xWAmnBEi
+2024/25,31,2025-05-15,Ekstraklasa,H,Widzew Łódź,Legia Warszawa,,0:2,1.51,1.66,19,10,2,5,1,4,433,355,364,300,84,85,55,45,,1203227,fq3Gm3Yb
+2024/25,30,2025-04-27,Ekstraklasa,A,Gornik Zabrze,Widzew Łódź,,0:0,0.81,0.69,9,9,1,3,3,1,466,467,391,399,84,85,50,50,,1203212,z1BiSe6L
+2024/25,29,2025-04-19,Ekstraklasa,H,Widzew Łódź,Motor Lublin,,1:2,0.94,1.29,13,6,1,3,0,1,444,404,374,336,84,83,53,47,,1203209,vFRl8zFk
+2024/25,28,2025-04-11,Ekstraklasa,A,Korona Kielce,Widzew Łódź,,2:1,1.4,0.9,18,11,5,2,1,1,335,301,261,218,78,72,53,47,,1203196,A1br5A2t
+2024/25,27,2025-04-04,Ekstraklasa,H,Widzew Łódź,Lechia Gdansk,,2:0,2.29,0.64,11,6,5,3,4,1,426,343,353,273,83,80,55,45,,1203191,K8iwdXPP
+2024/25,26,2025-03-28,Ekstraklasa,A,Piast Gliwice,Widzew Łódź,,0:2,1.02,1.77,16,13,5,3,1,2,477,430,395,363,83,84,53,47,,1203182,pIaSss5F
+2024/25,25,2025-03-15,Ekstraklasa,H,Widzew Łódź,GKS Katowice,,1:0,0.74,1.05,11,18,5,3,1,1,383,469,314,407,82,87,45,55,,1203174,lECMUZ9T
+2024/25,24,2025-03-09,Ekstraklasa,H,Widzew Łódź,Jagiellonia,,0:1,1.13,0.75,19,7,5,2,1,2,374,408,291,338,78,83,50,50,,1203164,2yD45JtI
+2024/25,23,2025-02-28,Ekstraklasa,A,Radomiak Radom,Widzew Łódź,,1:1,1.82,0.45,23,8,5,3,1,0,469,311,400,237,85,76,61,39,,1203154,6Xqvgkie
+2024/25,22,2025-02-22,Ekstraklasa,H,Widzew Łódź,Pogon Szczecin,,0:4,0.74,2.74,11,19,4,9,1,5,299,390,230,316,77,81,43,57,,1203147,thaQmfFF
+2024/25,21,2025-02-15,Ekstraklasa,A,Slask Wroclaw,Widzew Łódź,,3:0,1.69,0.31,15,12,5,2,4,0,316,419,239,328,76,78,44,56,,1203138,xdl7Z3f5
+2024/25,20,2025-02-09,Ekstraklasa,H,Widzew Łódź,Cracovia Krakow,,1:1,0.65,1.72,9,18,1,2,0,2,432,398,342,305,79,77,52,48,,1203129,Ofy1OIU6
+2024/25,19,2025-01-31,Ekstraklasa,A,Lech Poznan,Widzew Łódź,,4:1,1.82,0.68,17,11,7,6,3,0,527,322,461,259,87,80,61,39,,1203116,EwumLhIc
+2024/25,18,2024-12-07,Ekstraklasa,H,Widzew Łódź,Stal Mielec,,2:1,0.92,1.61,13,16,4,4,0,1,406,411,330,329,81,80,49,51,,1203111,S6lD8FYi
+2024/25,17,2024-11-30,Ekstraklasa,H,Widzew Łódź,Raków Częstochowa,,2:3,1.24,0.88,11,15,4,4,2,0,461,543,382,479,83,88,45,55,,1203101,25WwPeKO
+2024/25,16,2024-11-25,Ekstraklasa,A,Puszcza Niepołomice,Widzew Łódź,,2:0,2.14,1.25,17,16,6,3,3,1,249,473,177,405,71,86,35,65,,1203091,KlyLCRU1
+2024/25,15,2024-11-09,Ekstraklasa,H,Widzew Łódź,Zaglebie Lubin,,2:0,0.89,1.15,15,15,6,6,,,372,495,290,425,78,86,42,58,,1203083,K6Uj9hO9
+2024/25,14,2024-11-03,Ekstraklasa,A,Legia Warszawa,Widzew Łódź,,2:1,0.76,0.67,18,7,6,3,,,483,414,403,329,83,79,55,45,,1203071,AgYGfYiJ
+2024/25,13,2024-10-27,Ekstraklasa,H,Widzew Łódź,Gornik Zabrze,,0:2,0.73,2.28,10,14,5,4,,,391,566,323,478,83,84,40,60,,1203065,296RqHw1
+2024/25,12,2024-10-19,Ekstraklasa,A,Motor Lublin,Widzew Łódź,,3:4,1.55,1.06,11,16,6,5,,,427,556,342,472,80,85,44,56,,1203055,OMPxw9QG
+2024/25,11,2024-10-04,Ekstraklasa,H,Widzew Łódź,Korona Kielce,,0:1,1.21,1.68,21,10,1,7,,,483,292,389,189,81,65,62,38,,1203047,GdvU9AdU
+2024/25,10,2024-09-27,Ekstraklasa,A,Lechia Gdansk,Widzew Łódź,,1:1,1.06,2.12,10,19,2,9,,,355,496,263,415,74,84,42,58,,1203035,0QXelxUg
+2024/25,9,2024-09-21,Ekstraklasa,H,Widzew Łódź,Piast Gliwice,,1:0,1.71,0.91,11,12,3,3,,,444,465,377,384,85,83,48,52,,1203030,vegi8x4S
+2024/25,8,2024-09-13,Ekstraklasa,A,GKS Katowice,Widzew Łódź,,2:2,1.66,2.24,16,19,3,4,,,353,528,271,444,77,84,41,59,,1203014,8hMqY4Mb
+2024/25,7,2024-09-01,Ekstraklasa,A,Jagiellonia,Widzew Łódź,,1:0,1.78,0.47,12,10,4,3,,,540,405,473,328,88,81,57,43,,1203005,8EZYJE1l
+2024/25,6,2024-08-23,Ekstraklasa,H,Widzew Łódź,Radomiak Radom,,3:2,2.69,0.6,16,6,6,3,,,395,362,324,286,82,79,52,48,,1203002,GQc83gH7
+2024/25,5,2024-08-17,Ekstraklasa,A,Pogon Szczecin,Widzew Łódź,,2:0,1.52,0.09,24,5,8,2,,,582,343,511,286,88,83,63,37,,1202991,67MztaJq
+2024/25,4,2024-08-11,Ekstraklasa,H,Widzew Łódź,Slask Wroclaw,,0:0,0.21,1.37,6,17,1,3,,,419,386,343,321,82,83,51,49,,1202985,G44ToUk5
+2024/25,3,2024-08-05,Ekstraklasa,A,Cracovia Krakow,Widzew Łódź,,1:3,1.02,1.54,8,9,3,5,,,402,441,294,346,73,78,48,52,,1202968,OpYkpdc3
+2024/25,2,2024-07-27,Ekstraklasa,H,Widzew Łódź,Lech Poznan,,2:1,1.46,1.27,10,17,4,8,,,330,596,239,529,72,89,35,65,,1202967,b7t4Mh5d
+2024/25,1,2024-07-22,Ekstraklasa,A,Stal Mielec,Widzew Łódź,,1:1,0.89,1.03,9,12,4,4,,,417,454,321,377,77,83,48,52,,1202957,zilucxxo
