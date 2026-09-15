@@ -56,11 +56,16 @@ SELEKTORY = {
     ],
     # w obrebie wiersza: etykieta i dwie wartosci
     "etykieta": [
+        # uklad z wrzesnia 2026: klasy z losowym sufiksem, dopasowanie po prefiksie
+        '[class*="wcl-label_"]',
+        '[data-testid="wcl-scores-simple-text-01"]',
         '[data-testid="wcl-statistics-category"]',
         ".stat__categoryName",
         ".statCategoryName",
     ],
     "wartosc": [
+        # dokladnie dwie na wiersz: gospodarz pierwszy, gosc ostatni
+        '[class*="wcl-value_"]',
         '[data-testid="wcl-statistics-value"]',
         ".stat__homeValue, .stat__awayValue",
         ".statHomeValue, .statAwayValue",
