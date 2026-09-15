@@ -1014,13 +1014,22 @@ function renderKadencje() {
   // zeby srednia z 3 meczow nie udawala sredniej z 15.
   const niepelne = (o, s) => {
     if (!s) return "";
-    const braki = [["widzew_xg", "xG"], ["rywal_xg", "xGA"], ["widzew_shots", "Strzały"],
-      ["widzew_sot", "Na bramkę"], ["widzew_bc", "W. szanse"], ["widzew_pass_pct", "% podań"]]
-      .filter(([k]) => (s.nMetryk[k] || 0) < s.n);
-    if (!braki.length) return "";
-    const ile = s.nMetryk[braki[0][0]] || 0;
-    return `<br>${kadencjaKrotko(o)}: ${braki.map(x => x[1]).join(", ")} ${
-      ile ? `tylko z ${ile} m.` : "bez danych"} — starsze sezony mają w archiwum same wyniki.`;
+    const metryki = [["widzew_xg", "xG"], ["rywal_xg", "xGA"], ["widzew_shots", "Strzały"],
+      ["widzew_sot", "Na bramkę"], ["widzew_bc", "Wielkie szanse"],
+      ["widzew_pass_pct", "% podań"]];
+    // Grupujemy po FAKTYCZNEJ liczbie meczow: w jednej kadencji xG moze byc
+    // z 15 meczow, a wielkie szanse z 12 (Flashscore zaczal je liczyc pozniej).
+    // Jedna liczba dla wszystkich metryk klamalaby o podstawie.
+    const wg = {};
+    metryki.forEach(([k, et]) => {
+      const ile = s.nMetryk[k] || 0;
+      if (ile < s.n) (wg[ile] ||= []).push(et);
+    });
+    const czesci = Object.keys(wg).sort((a, b) => a - b).map(ile =>
+      `${wg[ile].join(", ")} ${ile === "0" ? "— brak danych" : `tylko z ${ile} m.`}`);
+    return czesci.length
+      ? `<br>${kadencjaKrotko(o)}: ${czesci.join("; ")}`
+      : "";
   };
 
   const skladA = kadencjaSklad(oA), skladB = kadencjaSklad(oB);
