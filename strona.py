@@ -133,6 +133,38 @@ SZABLON = """<!DOCTYPE html>
   footer b { font-weight: 600; color: var(--draw); }
 
   /* pasek porownania srednich */
+  .pytania {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+    padding: 12px 14px; margin: 0 0 14px;
+  }
+  .pyt-naglowek {
+    font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 8px;
+  }
+  .pyt-wstep { font-size: 13px; line-height: 1.45; margin: 0 0 6px; }
+  .pyt-limity {
+    font-size: 12px; line-height: 1.4; color: var(--muted); margin: 0 0 10px;
+  }
+  .pyt-wiersz { display: flex; gap: 8px; }
+  .pyt-wiersz input {
+    flex: 1 1 auto; min-width: 0; font: inherit; font-size: 14px;
+    padding: 7px 9px; border: 1px solid var(--line); border-radius: 4px;
+    background: var(--ground); color: var(--ink);
+  }
+  .pyt-wiersz button {
+    flex: 0 0 auto; font: inherit; font-size: 13px; padding: 7px 12px;
+    border: 1px solid var(--line); border-radius: 4px;
+    background: var(--panel-alt); color: var(--ink); cursor: pointer;
+  }
+  .pyt-odpowiedz { font-size: 14px; line-height: 1.45; margin-top: 10px; }
+  .pyt-odpowiedz:empty { display: none; }
+  .pyt-nieznane { color: var(--muted); }
+  .pyt-przyklady { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .pyt-przyklad {
+    font: inherit; font-size: 12px; padding: 4px 9px; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 999px;
+    background: transparent; color: var(--muted);
+  }
   .compare {
     max-width: 1240px; margin: 0 auto 26px;
     display: grid; grid-template-columns: repeat(auto-fit, minmax(196px, 1fr));
@@ -554,6 +586,8 @@ SZABLON = """<!DOCTYPE html>
 </div>
 
 <div class="compare" id="compare"></div>
+
+<div class="pytania" id="pytania"></div>
 
 <div class="forma" id="forma"></div>
 
@@ -1294,6 +1328,258 @@ function boxNadwyzka(etykietaTeraz, t, etykietaWczesniej, p) {
     <div class="row now"><span class="sez">${etykietaTeraz}</span>${wart(t)}</div>
     ${drugi}</div>`;
 }
+
+// --- Pytania o dane (box "Zapytaj o Widzew") ---
+// Swiadomie BEZ modelu jezykowego: dziedzina jest waska, a odpowiedzi musza
+// pochodzic z DANE, nie z generowania. Model podajacy liczby prędzej czy
+// pozniej poda zmyslona - tutaj kazda odpowiedz jest policzona tym samym
+// kodem co wykresy, a czego nie ma w danych, o tym mowimy wprost.
+
+function bezOgonkow(s) {
+  const mapa = {"ą":"a","ć":"c","ę":"e","ł":"l","ń":"n","ó":"o","ś":"s","ź":"z","ż":"z"};
+  return (s || "").toLowerCase().replace(/[ąćęłńóśźż]/g, z => mapa[z]).trim();
+}
+
+// Polska odmiana: "z Legia", "Legii", "pod Jovicevicem" - porownujemy RDZENIE,
+// nie cale slowa. Piec znakow wystarcza, zeby odroznic kluby, ktore mamy.
+function rdzen(s, n = 5) { return bezOgonkow(s).slice(0, n); }
+
+function wszystkieDruzyny() {
+  const zbior = new Set();
+  [DANE.sezony, DANE.archiwum || {}].forEach(grupa =>
+    Object.values(grupa).forEach(s => s.mecze.forEach(m => {
+      if (m.rywal_nazwa) zbior.add(m.rywal_nazwa);
+    })));
+  return [...zbior];
+}
+
+function znajdzDruzyne(pytanie) {
+  // Dopasowanie po wspolnym przedrostku slowa, nie po zawieraniu sie napisu.
+  // "Lechem" i "Lechia" maja wspolne 4 znaki, wiec samo zawieranie dawalo
+  // remis rozstrzygany kolejnoscia w danych. Przy remisie wygrywa nazwa
+  // BLIZSZA dlugoscia: "lechem" -> Lech, "lechia gdansk" -> Lechia.
+  const slowaPytania = bezOgonkow(pytanie).split(/[^a-z0-9]+/).filter(s => s.length >= 4);
+  let najlepsza = null, najlepszyWynik = 0, najlepszaKara = 99;
+  wszystkieDruzyny().forEach(nazwa => {
+    bezOgonkow(nazwa).split(" ").forEach(slowo => {
+      if (slowo.length < 4) return;
+      slowaPytania.forEach(sp => {
+        let wspolne = 0;
+        while (wspolne < slowo.length && wspolne < sp.length && slowo[wspolne] === sp[wspolne]) wspolne++;
+        if (wspolne < 4) return;
+        const kara = Math.abs(slowo.length - wspolne);
+        if (wspolne > najlepszyWynik || (wspolne === najlepszyWynik && kara < najlepszaKara)) {
+          najlepsza = nazwa; najlepszyWynik = wspolne; najlepszaKara = kara;
+        }
+      });
+    });
+  });
+  return najlepsza;
+}
+
+function znajdzTrenera(pytanie) {
+  const p = bezOgonkow(pytanie);
+  return (DANE.kadencje || []).find(o => {
+    const nazwisko = o.trener.split(" ").pop();
+    return nazwisko.length >= 5 && p.includes(rdzen(nazwisko, 5));
+  }) || null;
+}
+
+const METRYKI_PYTAN = [
+  { klucz: "widzew_xg",       etykieta: "xG",             slowa: ["xg"], wyklucz: ["xga", "przeciw", "stracone"] },
+  { klucz: "rywal_xg",        etykieta: "xGA",            slowa: ["xga", "xg rywali", "xg przeciw"] },
+  { klucz: "widzew_shots",    etykieta: "strzały",        slowa: ["strzal", "strzel"] },
+  { klucz: "widzew_sot",      etykieta: "strzały na bramkę", slowa: ["na bramke", "celn"] },
+  { klucz: "widzew_bc",       etykieta: "wielkie szanse", slowa: ["wielkie szans", "szans"] },
+  { klucz: "widzew_pass_pct", etykieta: "celność podań",  slowa: ["podan", "podaj"] },
+];
+
+function znajdzMetryke(pytanie) {
+  const p = bezOgonkow(pytanie);
+  // Od najbardziej szczegolowych: "na bramke" musi wygrac ze "strzal".
+  const kolejnosc = [5, 3, 4, 1, 2, 0];  // podania przed "celne"
+  for (const i of kolejnosc) {
+    const m = METRYKI_PYTAN[i];
+    if (m.slowa.some(s => p.includes(s)) && !(m.wyklucz || []).some(s => p.includes(s))) return m;
+  }
+  return null;
+}
+
+function liczba(x, miejsc = 2) {
+  return x === null || x === undefined ? null : x.toFixed(miejsc);
+}
+
+const NIE_MAMY = [
+  { slowa: ["strzelc", "strzelec", "bramkarz", "zawodni", "pilkarz", "asyst", "kto strzelil", "sklad"],
+    odp: "Nie zbieramy statystyk zawodników — WSTATZ patrzy tylko na mecze jako całość." },
+  { slowa: ["tabel", "inne druzyn", "kto prowadzi", "lider", "mistrz"],
+    odp: "Śledzimy wyłącznie Widzew, więc nie mam tabeli ligowej ani danych o innych drużynach." },
+  { slowa: ["kart", "rozn", "faul", "spalon"],
+    odp: "Kartek, rzutów rożnych i fauli nie zbieramy — mamy xG, strzały, wielkie szanse, podania i posiadanie." },
+];
+
+function odpowiedzNaPytanie(pytanie) {
+  const p = bezOgonkow(pytanie);
+  if (p.length < 3) return null;
+
+  for (const n of NIE_MAMY) {
+    if (n.slowa.some(s => p.includes(s))) return { tekst: n.odp, brak: true };
+  }
+
+  const sezon = DANE.sezony[teraz];
+  const grane = sezon.mecze.filter(m => m.rezultat);
+  const ostatni = grane[0];
+
+  // 1. Najblizszy mecz
+  if (/(nastepny|najblizsz|kiedy gra|z kim gram)/.test(p)) {
+    const m = najblizszyMecz(teraz);
+    if (!m) return { tekst: "W danych nie ma już żadnego zaplanowanego meczu." };
+    const gdzie = m.venue === "H" ? "u siebie" : "na wyjeździe";
+    const hist = h2hDlaMeczu(m);
+    const b = hist.length ? h2hBilans(m, hist) : null;
+    return { tekst: `Kolejka ${m.kolejka}, ${m.data}: <b>${m.gospodarz} – ${m.gosc}</b> (${gdzie}).` +
+      (b ? ` Bilans z tym rywalem: ${b.n} m., ${b.w}-${b.r}-${b.p}.`
+         : " Z tym rywalem nie graliśmy w zebranych sezonach.") };
+  }
+
+  // 2. Trener / kadencja
+  const kad = znajdzTrenera(p);
+  if (kad) {
+    const s = statystykiKadencji(kad);
+    if (!s) return { tekst: `${kad.trener} nie poprowadził jeszcze żadnego meczu w zebranych danych.` };
+    const met = znajdzMetryke(p);
+    if (met && s[met.klucz] !== null && s[met.klucz] !== undefined) {
+      return { tekst: `Za kadencji ${kad.trener}: <b>${liczba(s[met.klucz])}</b> ${met.etykieta} na mecz ` +
+        `(z ${s.nMetryk[met.klucz]} ${s.nMetryk[met.klucz] === 1 ? "meczu" : "meczów"}).` };
+    }
+    if (met) {
+      return { tekst: `Dla kadencji ${kad.trener} nie mamy danych o „${met.etykieta}" — ` +
+        `starsze sezony mają w archiwum tylko wyniki.`, brak: true };
+    }
+    return { tekst: `${kad.trener}: <b>${s.n} ${s.n === 1 ? "mecz" : "meczów"}</b>, bilans ` +
+      `${s.bilans.W}-${s.bilans.R}-${s.bilans.P}, <b>${liczba(s.punktyNaMecz)}</b> pkt na mecz.` };
+  }
+
+  // 3. Bilans z konkretnym rywalem
+  const druzyna = znajdzDruzyne(p);
+  if (druzyna) {
+    const wszystkie = [];
+    [DANE.sezony, DANE.archiwum || {}].forEach(grupa =>
+      Object.entries(grupa).forEach(([s, v]) => v.mecze.forEach(m => {
+        if (m.rywal_nazwa === druzyna && m.rezultat) wszystkie.push({ ...m, sezon: s });
+      })));
+    if (!wszystkie.length) {
+      return { tekst: `Z ${druzyna} nie mamy w danych ani jednego rozegranego meczu.`, brak: true };
+    }
+    const b = { W: 0, R: 0, P: 0 };
+    wszystkie.forEach(m => b[m.rezultat]++);
+    wszystkie.sort((x, y) => (y.sezon + String(y.kolejka).padStart(2, "0"))
+                             .localeCompare(x.sezon + String(x.kolejka).padStart(2, "0")));
+    const ost = wszystkie[0];
+    return { tekst: `Z ${druzyna}: <b>${wszystkie.length} m., ${b.W}-${b.R}-${b.P}</b> ` +
+      `(sezony ${[...new Set(wszystkie.map(m => m.sezon))].sort().join(", ")}). ` +
+      `Ostatnio ${ost.sezon} k${ost.kolejka}: ${ost.gospodarz} ${ost.wynik} ${ost.gosc}.` };
+  }
+
+  // 3b. Pytanie o druzyne, ktorej nie mamy: "z Barcelona" nie moze dostac
+  // odpowiedzi o punktach Widzewa - to nie klamstwo, ale nie odpowiedz na
+  // zadane pytanie, a czytelnik moze wziac te liczby za dotyczace rywala.
+  const slowaP = p.split(/[^a-z0-9]+/).filter(Boolean);
+  const iZ = slowaP.findIndex(s => s === "z" || s === "ze");
+  const poZ = iZ >= 0 && iZ + 1 < slowaP.length ? slowaP[iZ + 1] : null;
+  const NIE_DRUZYNA = ["kolej", "sezon", "mecz", "punkt", "kadenc", "domu", "wyjazd",
+                       "bramk", "gol", "trener", "ktor", "tego", "jaki", "roku", "iloma"];
+  if (poZ && poZ.length >= 4 && !NIE_DRUZYNA.some(s => poZ.startsWith(s))) {
+    return { tekst: "W zebranych danych nie ma drużyny o takiej nazwie. WSTATZ zna " +
+      "wyłącznie rywali Widzewa w Ekstraklasie od sezonu 2022/23.", brak: true };
+  }
+
+  // 4. Dom / wyjazd
+  if (/(w domu|u siebie|na wyjezdzie|wyjazd|domu czy)/.test(p)) {
+    const d = bilansWedlugMiejsca(teraz, "H"), w = bilansWedlugMiejsca(teraz, "A");
+    const opis = (x, gdzie) => x.n
+      ? `${gdzie}: ${x.w}-${x.r}-${x.p}, ${liczba(x.pktNaMecz)} pkt/mecz`
+      : `${gdzie}: brak rozegranych meczów`;
+    return { tekst: `${opis(d, "U siebie")} · ${opis(w, "Na wyjeździe")}.` };
+  }
+
+  // 5. Metryka w biezacym sezonie
+  const met = znajdzMetryke(p);
+  if (met) {
+    const s = sezon.srednie;
+    const mapa = { widzew_xg: "widzew_xg", rywal_xg: "rywal_xg", widzew_shots: "widzew_shots",
+                   widzew_sot: "widzew_sot", widzew_bc: "widzew_bc", widzew_pass_pct: "widzew_pass_pct" };
+    const v = s[mapa[met.klucz]];
+    if (v === null || v === undefined) return { tekst: `Nie mamy danych o „${met.etykieta}" w tym sezonie.`, brak: true };
+    return { tekst: `W sezonie ${teraz}: <b>${liczba(v)}</b> ${met.etykieta} na mecz (po ${grane.length} kolejkach).` };
+  }
+
+  // 6. Stan sezonu: punkty, pozycja, bilans, forma
+  if (/(punkt|pkt|miejsc|pozycj|tabel|bilans|jak nam idzie|forma|ile wygra)/.test(p)) {
+    const b = sezon.srednie.bilans;
+    const gole = grane.reduce((s, m) => s + m.widzew_gole, 0);
+    const stracone = grane.reduce((s, m) => s + m.rywal_gole, 0);
+    return { tekst: `Po ${grane.length} kolejkach: <b>${ostatni.punkty_do} pkt</b>, ` +
+      `${ostatni.pozycja ? `<b>${ostatni.pozycja}. miejsce</b>, ` : ""}` +
+      `bilans ${b.W}-${b.R}-${b.P}, bramki ${gole}:${stracone}.` };
+  }
+
+  // 7. Ostatni mecz
+  if (/(ostatni mecz|jak zagral|wynik)/.test(p)) {
+    return { tekst: `Kolejka ${ostatni.kolejka}: <b>${ostatni.gospodarz} ${ostatni.wynik} ${ostatni.gosc}</b>` +
+      (ostatni.widzew_xg !== null ? ` (xG ${liczba(ostatni.widzew_xg)} – ${liczba(ostatni.rywal_xg)}).` : ".") };
+  }
+
+  return null;
+}
+
+const PRZYKLADY = ["Kiedy następny mecz?", "Jak nam idzie z Legią?",
+                   "Ile mamy punktów?", "Średnie xG w sezonie"];
+
+function pytania() {
+  const el = document.getElementById("pytania");
+  if (!el) return;
+  el.innerHTML = `
+    <div class="pyt-naglowek">Zapytaj o Widzew</div>
+    <p class="pyt-wstep">Cześć! Zapytaj mnie o Widzew — wyniki, bilans z rywalem,
+      punkty i miejsce, xG i strzały, grę u siebie i na wyjeździe, kadencje trenerów.</p>
+    <p class="pyt-limity">Wiele wiem, ale nie wszystko. Nie mam statystyk
+      indywidualnych zawodników, tabeli ligowej ani danych innych drużyn, kartek
+      i rzutów rożnych, a xG mam dopiero od sezonu 2024/25.</p>
+    <div class="pyt-wiersz">
+      <input id="pytInput" type="text" placeholder="np. jak nam idzie z Legią?"
+             autocomplete="off" aria-label="Pytanie o dane">
+      <button id="pytSzukaj">Sprawdź</button>
+    </div>
+    <div class="pyt-odpowiedz" id="pytOdpowiedz"></div>
+    <div class="pyt-przyklady">${PRZYKLADY.map(x =>
+      `<button class="pyt-przyklad" data-pyt="${x}">${x}</button>`).join("")}</div>`;
+
+  const pokaz = (pytanie) => {
+    const wynik = odpowiedzNaPytanie(pytanie);
+    const box = document.getElementById("pytOdpowiedz");
+    if (!wynik) {
+      box.innerHTML = `<span class="pyt-nieznane">Nie rozumiem tego pytania. ` +
+        `Spróbuj jednego z przykładów poniżej — odpowiadam o wynikach, bilansie ` +
+        `z rywalem, punktach, metrykach (xG, strzały, podania), grze u siebie ` +
+        `i na wyjeździe oraz kadencjach trenerów.</span>`;
+      return;
+    }
+    box.innerHTML = `<span class="${wynik.brak ? "pyt-nieznane" : ""}">${wynik.tekst}</span>`;
+  };
+
+  document.getElementById("pytSzukaj").addEventListener("click",
+    () => pokaz(document.getElementById("pytInput").value));
+  document.getElementById("pytInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") pokaz(e.target.value);
+  });
+  el.querySelectorAll(".pyt-przyklad").forEach(b =>
+    b.addEventListener("click", () => {
+      document.getElementById("pytInput").value = b.dataset.pyt;
+      pokaz(b.dataset.pyt);
+    }));
+}
+
 
 function compare() {
   const el = document.getElementById("compare");
@@ -2192,6 +2478,7 @@ document.getElementById("seasons").addEventListener("click", e => {
 
 naglowek();
 compare();
+pytania();
 renderForma();
 renderDomWyjazd();
 stopka();
