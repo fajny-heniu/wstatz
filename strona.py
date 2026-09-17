@@ -144,10 +144,10 @@ SZABLON = """<!DOCTYPE html>
     font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
     color: var(--muted); margin-bottom: 8px;
   }
-  .pyt-wstep { font-size: 13px; line-height: 1.45; margin: 0 0 6px; max-width: 74ch; }
+  .pyt-srodek { max-width: 760px; }
+  .pyt-wstep { font-size: 13px; line-height: 1.45; margin: 0 0 6px; }
   .pyt-limity {
     font-size: 12px; line-height: 1.4; color: var(--muted); margin: 0 0 12px;
-    max-width: 74ch;
   }
   .pyt-wiersz { display: flex; gap: 8px; max-width: 520px; }
   .pyt-wiersz input {
@@ -160,7 +160,7 @@ SZABLON = """<!DOCTYPE html>
     border: 1px solid var(--line); border-radius: 4px;
     background: var(--panel-alt); color: var(--ink); cursor: pointer;
   }
-  .pyt-odpowiedz { font-size: 14px; line-height: 1.45; margin-top: 12px; max-width: 74ch; }
+  .pyt-odpowiedz { font-size: 14px; line-height: 1.45; margin-top: 12px; }
   .pyt-odpowiedz:empty { display: none; }
   .pyt-nieznane { color: var(--muted); }
   .pyt-przyklady { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
@@ -1427,6 +1427,8 @@ function opisMetryki(met, mecze, naglowek, sredniaGotowa) {
     czesci.push(`łącznie <b>${suma.toFixed(met.klucz.includes("xg") ? 1 : 0)}</b>`);
   }
   return `${met.etykieta}, ${naglowek}: ${czesci.join(" · ")} ` +
+    // Po przyimku "z" idzie dopelniacz: "z 22 meczów", nie "z 22 mecze".
+    // meczySlowo() sluzy mianownikowi ("22 mecze"), tu go nie uzywamy.
     `(z ${wart.length} ${wart.length === 1 ? "meczu" : "meczów"}).`;
 }
 
@@ -1439,6 +1441,13 @@ function znajdzMetryke(pytanie) {
     if (m.slowa.some(s => p.includes(s)) && !(m.wyklucz || []).some(s => p.includes(s))) return m;
   }
   return null;
+}
+
+// Polska odmiana: 1 mecz, 2-4 mecze, 5+ meczow, ale 12-14 meczow.
+function meczySlowo(n) {
+  if (n === 1) return "mecz";
+  const ost = n % 10, dwie = n % 100;
+  return (ost >= 2 && ost <= 4 && !(dwie >= 12 && dwie <= 14)) ? "mecze" : "meczów";
 }
 
 function liczba(x, miejsc = 2) {
@@ -1466,6 +1475,41 @@ function odpowiedzNaPytanie(pytanie) {
   const grane = sezon.mecze.filter(m => m.rezultat);
   const ostatni = grane[0];
 
+  // Sezon wskazany w pytaniu. Bez tego "xG w 2023" dostawalo xG z biezacego
+  // sezonu - liczba prawdziwa, tylko o czym innym, a pytajacy nie ma jak tego
+  // zauwazyc. Rok 2023 -> sezon 2023/24.
+  const rok = p.match(/(20[0-9][0-9])/);
+  let wskazany = null, wskazanaNazwa = null;
+  if (rok) {
+    const y = parseInt(rok[1], 10);
+    wskazanaNazwa = `${y}/${String((y + 1) % 100).padStart(2, "0")}`;
+    wskazany = DANE.sezony[wskazanaNazwa] || (DANE.archiwum || {})[wskazanaNazwa] || null;
+    if (!wskazany) {
+      return { tekst: `Nie mam danych z sezonu ${wskazanaNazwa}. Zbieramy sezony ` +
+        `${[...Object.keys(DANE.archiwum || {}), ...Object.keys(DANE.sezony)].sort().join(", ")}.`,
+        brak: true };
+    }
+  } else if (/(zeszl|poprzedni|rok temu|ubiegl)/.test(p) && wczesniej) {
+    wskazanaNazwa = wczesniej;
+    wskazany = DANE.sezony[wczesniej];
+  }
+  const meczeWskazane = wskazany ? wskazany.mecze.filter(m => m.rezultat) : grane;
+  const nazwaSezonu = wskazanaNazwa || teraz;
+
+  // "po 5 kolejkach" - stan po konkretnej kolejce, nie po ostatniej rozegranej
+  const poKolejce = p.match(/po ([0-9]{1,2}) (?:kolejk|meczach|meczu)/);
+  if (poKolejce) {
+    const nr = parseInt(poKolejce[1], 10);
+    const m = meczeWskazane.find(x => x.kolejka === nr);
+    if (!m) {
+      return { tekst: `W sezonie ${nazwaSezonu} nie mam jeszcze kolejki ${nr} ` +
+        `(rozegranych: ${meczeWskazane.length}).`, brak: true };
+    }
+    return { tekst: `Po ${nr} kolejkach sezonu ${nazwaSezonu}: <b>${m.punkty_do} pkt</b>` +
+      (m.pozycja ? `, <b>${m.pozycja}. miejsce</b>` : "") +
+      ` (bilans do tego momentu ${m.bilans_do}).` };
+  }
+
   // 1. Najblizszy mecz
   if (/(nastepny|najblizsz|kiedy gra|z kim gram)/.test(p)) {
     const m = najblizszyMecz(teraz);
@@ -1476,6 +1520,18 @@ function odpowiedzNaPytanie(pytanie) {
     return { tekst: `Kolejka ${m.kolejka}, ${m.data}: <b>${m.gospodarz} – ${m.gosc}</b> (${gdzie}).` +
       (b ? ` Bilans z tym rywalem: ${b.n} m., ${b.w}-${b.r}-${b.p}.`
          : " Z tym rywalem nie graliśmy w zebranych sezonach.") };
+  }
+
+  // 2a. Pytanie o "najlepszego" trenera. Swiadomie NIE dajemy rankingu:
+  // kadencje maja od 1 do 49 meczow, wiec sortowanie po pkt/mecz stawialoby
+  // na czele trzymeczowa probke. Odsylamy do zakladki, gdzie widac liczbe meczow.
+  if (/(najlepsz|najgorsz|ktory trener|kto byl lepszy)/.test(p) &&
+      /(trener|kadenc)/.test(p)) {
+    const lista = (DANE.kadencje || []).filter(o => o.n > 0)
+      .map(o => `${o.trener.split(" ").pop()} ${o.n} m.`).join(", ");
+    return { tekst: `Nie układam trenerów w ranking — kadencje mają bardzo różną ` +
+      `liczbę meczów (${lista}), więc czołówka mówiłaby więcej o próbce niż o pracy. ` +
+      `W zakładce <b>Kadencje</b> możesz zestawić dowolne dwie, z liczbą meczów przy każdej.` };
   }
 
   // 2. Trener / kadencja
@@ -1492,7 +1548,7 @@ function odpowiedzNaPytanie(pytanie) {
       return { tekst: `Dla kadencji ${kad.trener} nie mamy danych o „${met.etykieta}" — ` +
         `starsze sezony mają w archiwum tylko wyniki.`, brak: true };
     }
-    return { tekst: `${kad.trener}: <b>${s.n} ${s.n === 1 ? "mecz" : "meczów"}</b>, bilans ` +
+    return { tekst: `${kad.trener}: <b>${s.n} ${meczySlowo(s.n)}</b>, bilans ` +
       `${s.bilans.W}-${s.bilans.R}-${s.bilans.P}, <b>${liczba(s.punktyNaMecz)}</b> pkt na mecz.` };
   }
 
@@ -1539,19 +1595,98 @@ function odpowiedzNaPytanie(pytanie) {
     return { tekst: `${opis(d, "U siebie")} · ${opis(w, "Na wyjeździe")}.` };
   }
 
+  // 3c. Rekord sezonu - juz liczony na stronie, wiec tylko go podajemy
+  if (/(najlepszy mecz|najlepszy wystep|rekord)/.test(p)) {
+    // rekordSezonu() zwraca sam mecz i czyta tylko DANE.sezony, wiec dla
+    // sezonu archiwalnego liczymy tu samodzielnie ta sama formula.
+    const kand = meczeWskazane.filter(m =>
+      (m.rezultat === "W" || m.rezultat === "R") &&
+      m.widzew_xg !== null && m.rywal_xg !== null);
+    if (!kand.length) {
+      return { tekst: `Dla sezonu ${nazwaSezonu} nie policzę rekordu — ` +
+        `to metryka oparta na xG, a tego sezonu nie mamy w statystykach.`, brak: true };
+    }
+    const r = DANE.sezony[nazwaSezonu] ? rekordSezonu(nazwaSezonu)
+      : [...kand].sort((a, b) => (b.widzew_xg - b.rywal_xg) - (a.widzew_xg - a.rywal_xg))[0];
+    const roznica = r.widzew_xg - r.rywal_xg;
+    return { tekst: `Rekord sezonu ${nazwaSezonu}: k${r.kolejka} ` +
+      `<b>${r.gospodarz} ${r.wynik} ${r.gosc}</b> ` +
+      `(xG − xGA: ${roznica > 0 ? "+" : ""}${roznica.toFixed(2)}). ` +
+      `Liczone wśród wygranych i remisów.` };
+  }
+
+  // 3d. Seria bez porazki - liczona od najnowszego meczu wstecz
+  if (/(seria|bez porazki|bez przegran|z rzedu|pod rzad)/.test(p)) {
+    let seria = 0;
+    for (const m of meczeWskazane) { if (m.rezultat === "P") break; seria++; }
+    const opis = seria === 0
+      ? "Ostatni mecz przegrany, więc serii bez porażki nie ma."
+      : `Seria bez porażki: <b>${seria}</b> ${meczySlowo(seria)}.`;
+    return { tekst: `${opis} Bilans sezonu ${nazwaSezonu}: ` +
+      `${meczeWskazane.filter(m => m.rezultat === "W").length}-` +
+      `${meczeWskazane.filter(m => m.rezultat === "R").length}-` +
+      `${meczeWskazane.filter(m => m.rezultat === "P").length}.` };
+  }
+
+  // 3e. Porownanie z poprzednim sezonem
+  if (/(porownan|lepiej niz|gorzej niz|niz rok temu|niz w zeszl|rok do roku)/.test(p) && wczesniej) {
+    const a = DANE.sezony[teraz].srednie, b = DANE.sezony[wczesniej].srednie;
+    const met = znajdzMetryke(p);
+    if (met) {
+      const va = a[met.klucz], vb = b[met.klucz];
+      if (va === null || vb === null) return { tekst: `Nie mam tej metryki w obu sezonach.`, brak: true };
+      const zn = va - vb;
+      return { tekst: `${met.etykieta} na mecz: <b>${va.toFixed(met.miejsc)}</b> w ${teraz} ` +
+        `wobec <b>${vb.toFixed(met.miejsc)}</b> w ${wczesniej} ` +
+        `(${zn > 0 ? "+" : ""}${zn.toFixed(met.miejsc)}).` };
+    }
+    const pkt = (x) => (x.bilans.W * 3 + x.bilans.R) /
+                       (x.bilans.W + x.bilans.R + x.bilans.P);
+    const pa = pkt(a), pb = pkt(b);
+    return { tekst: `Punkty na mecz: <b>${pa.toFixed(2)}</b> w ${teraz} wobec ` +
+      `<b>${pb.toFixed(2)}</b> w ${wczesniej}. xG: ${a.widzew_xg.toFixed(2)} wobec ` +
+      `${b.widzew_xg.toFixed(2)}, xGA: ${a.rywal_xg.toFixed(2)} wobec ${b.rywal_xg.toFixed(2)}.` };
+  }
+
+  // 4b. Bramki strzelone i stracone. Osobno od metryk, bo "bramek" to gole,
+  // a "na bramke" to strzaly celne - dwie rozne rzeczy, ktore w polszczyznie
+  // brzmia podobnie. Pytanie "ile bramek zdobylismy" nie bylo wczesniej
+  // obslugiwane, mimo ze dane siedza w pasku srednich.
+  // Warunek wykluczajacy jest tu istotny: "strzaly na bramke" tez zawiera
+  // "bramk", a to zupelnie inna metryka. Gole tylko wtedy, gdy w pytaniu nie
+  // ma slowa o strzalach.
+  const oStrzalach = /(strzal|na bramke|celn)/.test(p);
+  if (!oStrzalach && /(bramk|gol[ie]|goli|zdobyl|strac)/.test(p)) {
+    const gole = meczeWskazane.reduce((s, m) => s + m.widzew_gole, 0);
+    const stracone = meczeWskazane.reduce((s, m) => s + m.rywal_gole, 0);
+    const n = meczeWskazane.length;
+    return { tekst: `Bramki w sezonie ${nazwaSezonu}: <b>${gole}</b> strzelone, ` +
+      `<b>${stracone}</b> stracone (${gole}:${stracone}) w ${n} meczach — ` +
+      `średnio ${(gole / n).toFixed(2)} – ${(stracone / n).toFixed(2)} na mecz.` };
+  }
+
   // 5. Metryka w biezacym sezonie
   const met = znajdzMetryke(p);
   if (met) {
-    const opis = opisMetryki(met, grane, `sezon ${teraz}`, sezon.srednie[met.klucz]);
-    if (!opis) return { tekst: `Nie mamy danych o „${met.etykieta}" w tym sezonie.`, brak: true };
+    const opis = opisMetryki(met, meczeWskazane, `sezon ${nazwaSezonu}`,
+      wskazany && wskazany.srednie ? wskazany.srednie[met.klucz] : sezon.srednie[met.klucz]);
+    if (!opis) return { tekst: `Dla sezonu ${nazwaSezonu} nie mam danych o „${met.etykieta}" — ` +
+      `xG i statystyki mamy od sezonu 2024/25, wcześniej tylko wyniki.`, brak: true };
     return { tekst: opis };
   }
 
   // 6. Stan sezonu: punkty, pozycja, bilans, forma
   if (/(punkt|pkt|miejsc|pozycj|tabel|bilans|jak nam idzie|forma|ile wygra)/.test(p)) {
-    const b = sezon.srednie.bilans;
-    const gole = grane.reduce((s, m) => s + m.widzew_gole, 0);
-    const stracone = grane.reduce((s, m) => s + m.rywal_gole, 0);
+    const b = { W: meczeWskazane.filter(m => m.rezultat === "W").length,
+                R: meczeWskazane.filter(m => m.rezultat === "R").length,
+                P: meczeWskazane.filter(m => m.rezultat === "P").length };
+    const gole = meczeWskazane.reduce((s, m) => s + m.widzew_gole, 0);
+    const stracone = meczeWskazane.reduce((s, m) => s + m.rywal_gole, 0);
+    if (wskazany) {
+      const pkt = b.W * 3 + b.R;
+      return { tekst: `Sezon ${nazwaSezonu}: <b>${pkt} pkt</b> w ${meczeWskazane.length} meczach, ` +
+        `bilans ${b.W}-${b.R}-${b.P}, bramki ${gole}:${stracone}.` };
+    }
     return { tekst: `Po ${grane.length} kolejkach: <b>${ostatni.punkty_do} pkt</b>, ` +
       `${ostatni.pozycja ? `<b>${ostatni.pozycja}. miejsce</b>, ` : ""}` +
       `bilans ${b.W}-${b.R}-${b.P}, bramki ${gole}:${stracone}.` };
@@ -1574,6 +1709,7 @@ function pytania() {
   if (!el) return;
   el.innerHTML = `
     <div class="pyt-naglowek">Zapytaj o Widzew</div>
+    <div class="pyt-srodek">
     <p class="pyt-wstep">Cześć! Zapytaj mnie o Widzew — wyniki, bilans z rywalem,
       punkty i miejsce, xG i strzały, grę u siebie i na wyjeździe, kadencje trenerów.</p>
     <p class="pyt-limity">Wiele wiem, ale nie wszystko. Nie mam statystyk
@@ -1586,7 +1722,8 @@ function pytania() {
     </div>
     <div class="pyt-odpowiedz" id="pytOdpowiedz"></div>
     <div class="pyt-przyklady">${PRZYKLADY.map(x =>
-      `<button class="pyt-przyklad" data-pyt="${x}">${x}</button>`).join("")}</div>`;
+      `<button class="pyt-przyklad" data-pyt="${x}">${x}</button>`).join("")}</div>
+    </div>`;
 
   const pokaz = (pytanie) => {
     const wynik = odpowiedzNaPytanie(pytanie);
