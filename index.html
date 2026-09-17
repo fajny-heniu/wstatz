@@ -114,18 +114,22 @@
 
   /* pasek porownania srednich */
   .pytania {
-    background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
-    padding: 12px 14px; margin: 0 0 14px;
+    /* Ta sama szerokosc i wysrodkowanie co .compare - bez tego box rozlewal
+       sie na cala szerokosc okna i nie trzymal linii z paskiem srednich. */
+    max-width: 1240px; margin: 0 auto 26px;
+    background: var(--panel); border: 1px solid var(--line);
+    padding: 14px 16px 16px;
   }
   .pyt-naglowek {
     font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
     color: var(--muted); margin-bottom: 8px;
   }
-  .pyt-wstep { font-size: 13px; line-height: 1.45; margin: 0 0 6px; }
+  .pyt-wstep { font-size: 13px; line-height: 1.45; margin: 0 0 6px; max-width: 74ch; }
   .pyt-limity {
-    font-size: 12px; line-height: 1.4; color: var(--muted); margin: 0 0 10px;
+    font-size: 12px; line-height: 1.4; color: var(--muted); margin: 0 0 12px;
+    max-width: 74ch;
   }
-  .pyt-wiersz { display: flex; gap: 8px; }
+  .pyt-wiersz { display: flex; gap: 8px; max-width: 520px; }
   .pyt-wiersz input {
     flex: 1 1 auto; min-width: 0; font: inherit; font-size: 14px;
     padding: 7px 9px; border: 1px solid var(--line); border-radius: 4px;
@@ -136,7 +140,7 @@
     border: 1px solid var(--line); border-radius: 4px;
     background: var(--panel-alt); color: var(--ink); cursor: pointer;
   }
-  .pyt-odpowiedz { font-size: 14px; line-height: 1.45; margin-top: 10px; }
+  .pyt-odpowiedz { font-size: 14px; line-height: 1.45; margin-top: 12px; max-width: 74ch; }
   .pyt-odpowiedz:empty { display: none; }
   .pyt-nieznane { color: var(--muted); }
   .pyt-przyklady { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
@@ -1366,13 +1370,45 @@ function znajdzTrenera(pytanie) {
 }
 
 const METRYKI_PYTAN = [
-  { klucz: "widzew_xg",       etykieta: "xG",             slowa: ["xg"], wyklucz: ["xga", "przeciw", "stracone"] },
-  { klucz: "rywal_xg",        etykieta: "xGA",            slowa: ["xga", "xg rywali", "xg przeciw"] },
-  { klucz: "widzew_shots",    etykieta: "strzały",        slowa: ["strzal", "strzel"] },
-  { klucz: "widzew_sot",      etykieta: "strzały na bramkę", slowa: ["na bramke", "celn"] },
-  { klucz: "widzew_bc",       etykieta: "wielkie szanse", slowa: ["wielkie szans", "szans"] },
-  { klucz: "widzew_pass_pct", etykieta: "celność podań",  slowa: ["podan", "podaj"] },
+  { klucz: "widzew_xg", etykieta: "xG", miejsc: 2, suma: true,
+    slowa: ["xg"], wyklucz: ["xga", "przeciw", "stracone"] },
+  { klucz: "rywal_xg", etykieta: "xGA (xG rywali)", miejsc: 2, suma: true,
+    slowa: ["xga", "xg rywali", "xg przeciw"] },
+  { klucz: "widzew_shots", etykieta: "Strzały", miejsc: 1, suma: true,
+    slowa: ["strzal", "strzel"] },
+  { klucz: "widzew_sot", etykieta: "Strzały na bramkę", miejsc: 1, suma: true,
+    slowa: ["na bramke", "celn"] },
+  { klucz: "widzew_bc", etykieta: "Wielkie szanse", miejsc: 2, suma: true,
+    slowa: ["wielkie szans", "szans"] },
+  // Procentu nie sumujemy - suma celnosci podan nie znaczy nic.
+  { klucz: "widzew_pass_pct", etykieta: "Celność podań", miejsc: 1, suma: false,
+    slowa: ["podan", "podaj"] },
 ];
+
+// Podajemy ZAWSZE srednia i sume, gdy suma ma sens. Pytanie "ile lacznie
+// strzalow" dostawalo wcześniej sredniej na mecz - odpowiedz nie na temat,
+// a przy strzalach rozni sie osmiokrotnie. Dwie liczby obok siebie usuwaja
+// te dwuznacznosc i omijaja odmiane liczebnikow ("4.00 strzaly").
+function opisMetryki(met, mecze, naglowek, sredniaGotowa) {
+  const wart = mecze.map(m => m[met.klucz]).filter(v => v !== null && v !== undefined);
+  if (!wart.length) return null;
+  // Srednia bierzemy z tego samego zrodla co pasek srednich, gdy jest dostepna.
+  // Policzona tutaj od nowa moze sie roznic na ostatnim miejscu: zbuduj.py
+  // zaokragla polowki do parzystej (3.125 -> 3.12), JS w gore (-> 3.13), a dwie
+  // rozne wartosci tej samej metryki na jednej stronie to blad, nie niuans.
+  const srednia = (sredniaGotowa !== null && sredniaGotowa !== undefined)
+    ? sredniaGotowa
+    : wart.reduce((a, b) => a + b, 0) / wart.length;
+  const czesci = [met.klucz === "widzew_pass_pct"
+    ? `średnio <b>${srednia.toFixed(met.miejsc)}%</b>`
+    : `<b>${srednia.toFixed(met.miejsc)}</b> na mecz`];
+  if (met.suma) {
+    const suma = wart.reduce((a, b) => a + b, 0);
+    czesci.push(`łącznie <b>${suma.toFixed(met.klucz.includes("xg") ? 1 : 0)}</b>`);
+  }
+  return `${met.etykieta}, ${naglowek}: ${czesci.join(" · ")} ` +
+    `(z ${wart.length} ${wart.length === 1 ? "meczu" : "meczów"}).`;
+}
 
 function znajdzMetryke(pytanie) {
   const p = bezOgonkow(pytanie);
@@ -1429,8 +1465,8 @@ function odpowiedzNaPytanie(pytanie) {
     if (!s) return { tekst: `${kad.trener} nie poprowadził jeszcze żadnego meczu w zebranych danych.` };
     const met = znajdzMetryke(p);
     if (met && s[met.klucz] !== null && s[met.klucz] !== undefined) {
-      return { tekst: `Za kadencji ${kad.trener}: <b>${liczba(s[met.klucz])}</b> ${met.etykieta} na mecz ` +
-        `(z ${s.nMetryk[met.klucz]} ${s.nMetryk[met.klucz] === 1 ? "meczu" : "meczów"}).` };
+      const opis = opisMetryki(met, meczeKadencji(kad), `kadencja ${kad.trener}`, s[met.klucz]);
+      if (opis) return { tekst: opis };
     }
     if (met) {
       return { tekst: `Dla kadencji ${kad.trener} nie mamy danych o „${met.etykieta}" — ` +
@@ -1486,12 +1522,9 @@ function odpowiedzNaPytanie(pytanie) {
   // 5. Metryka w biezacym sezonie
   const met = znajdzMetryke(p);
   if (met) {
-    const s = sezon.srednie;
-    const mapa = { widzew_xg: "widzew_xg", rywal_xg: "rywal_xg", widzew_shots: "widzew_shots",
-                   widzew_sot: "widzew_sot", widzew_bc: "widzew_bc", widzew_pass_pct: "widzew_pass_pct" };
-    const v = s[mapa[met.klucz]];
-    if (v === null || v === undefined) return { tekst: `Nie mamy danych o „${met.etykieta}" w tym sezonie.`, brak: true };
-    return { tekst: `W sezonie ${teraz}: <b>${liczba(v)}</b> ${met.etykieta} na mecz (po ${grane.length} kolejkach).` };
+    const opis = opisMetryki(met, grane, `sezon ${teraz}`, sezon.srednie[met.klucz]);
+    if (!opis) return { tekst: `Nie mamy danych o „${met.etykieta}" w tym sezonie.`, brak: true };
+    return { tekst: opis };
   }
 
   // 6. Stan sezonu: punkty, pozycja, bilans, forma
