@@ -151,15 +151,15 @@ SZABLON = """<!DOCTYPE html>
   .pyt-srodek { max-width: 760px; }
   @media (min-width: 900px) {
     .pyt-srodek {
-      max-width: none; display: grid; gap: 10px 32px;
+      max-width: none; display: grid; gap: 0 36px;
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       align-items: start;
     }
-    .pyt-wstep  { grid-column: 1; grid-row: 1; margin: 0 0 6px; }
-    .pyt-limity { grid-column: 1; grid-row: 2; margin: 0; align-self: start; }
-    .pyt-wiersz { grid-column: 2; grid-row: 1; max-width: none; }
-    .pyt-odpowiedz { grid-column: 2; grid-row: 2; margin-top: 0; }
-    .pyt-przyklady { grid-column: 2; grid-row: 3; margin-top: 0; }
+    /* Kazda kolumna to osobny blok - gdy elementy obu kolumn dzielily wiersze
+       siatki, wyzszy tekst po lewej odpychal przyciski po prawej w dol. */
+    .pyt-limity { margin: 0; }
+    .pyt-wiersz { max-width: none; }
+    .pyt-przyklady { margin-top: 10px; }
   }
   .pyt-wstep { font-size: 13px; line-height: 1.45; margin: 0 0 6px; }
   .pyt-limity {
@@ -1726,11 +1726,14 @@ function pytania() {
   el.innerHTML = `
     <div class="pyt-naglowek">Zapytaj o Widzew</div>
     <div class="pyt-srodek">
+    <div class="pyt-lewa">
     <p class="pyt-wstep">Cześć! Zapytaj mnie o Widzew — wyniki, bilans z rywalem,
       punkty i miejsce, xG i strzały, grę u siebie i na wyjeździe, kadencje trenerów.</p>
     <p class="pyt-limity">Wiele wiem, ale nie wszystko. Nie mam statystyk
       indywidualnych zawodników, tabeli ligowej ani danych innych drużyn, kartek
       i rzutów rożnych, a xG mam dopiero od sezonu 2024/25.</p>
+    </div>
+    <div class="pyt-prawa">
     <div class="pyt-wiersz">
       <input id="pytInput" type="text" placeholder="np. jak nam idzie z Legią?"
              autocomplete="off" aria-label="Pytanie o dane">
@@ -1739,7 +1742,7 @@ function pytania() {
     <div class="pyt-odpowiedz" id="pytOdpowiedz"></div>
     <div class="pyt-przyklady">${PRZYKLADY.map(x =>
       `<button class="pyt-przyklad" data-pyt="${x}">${x}</button>`).join("")}</div>
-    </div>`;
+    </div></div>`;
 
   const pokaz = (pytanie) => {
     const wynik = odpowiedzNaPytanie(pytanie);
