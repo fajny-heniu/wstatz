@@ -1577,14 +1577,17 @@ function odpowiedzNaPytanie(pytanie) {
         if (m.rywal_nazwa === druzyna && m.rezultat) wszystkie.push({ ...m, sezon: s });
       })));
     if (!wszystkie.length) {
-      return { tekst: `Z ${druzyna} nie mamy w danych ani jednego rozegranego meczu.`, brak: true };
+      return { tekst: `${druzyna} — w zebranych danych nie ma ani jednego ` +
+        `rozegranego meczu z tym rywalem.`, brak: true };
     }
     const b = { W: 0, R: 0, P: 0 };
     wszystkie.forEach(m => b[m.rezultat]++);
     wszystkie.sort((x, y) => (y.sezon + String(y.kolejka).padStart(2, "0"))
                              .localeCompare(x.sezon + String(x.kolejka).padStart(2, "0")));
     const ost = wszystkie[0];
-    return { tekst: `Z ${druzyna}: <b>${wszystkie.length} m., ${b.W}-${b.R}-${b.P}</b> ` +
+    // Nazwa bez przyimka, zeby nie odmieniac: "Z Piast Gliwice" bylo bledne,
+    // a regula na odmiane nazw klubow (Legia/Legia, Piast/Piastem) nie istnieje.
+    return { tekst: `<b>${druzyna}</b> — bilans <b>${wszystkie.length} m., ${b.W}-${b.R}-${b.P}</b> ` +
       `(sezony ${[...new Set(wszystkie.map(m => m.sezon))].sort().join(", ")}). ` +
       `Ostatnio ${ost.sezon} k${ost.kolejka}: ${ost.gospodarz} ${ost.wynik} ${ost.gosc}.` };
   }
