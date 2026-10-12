@@ -144,7 +144,23 @@ SZABLON = """<!DOCTYPE html>
     font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
     color: var(--muted); margin-bottom: 8px;
   }
+  /* Na szerokim ekranie dwie kolumny: tekst po lewej, pole i przyklady po
+     prawej. W jednej kolumnie tresc konczyla sie w polowie boksu, a prawa
+     polowa zostawala pusta - przy pasku srednich nad nim wygladalo to na
+     niedokonczone. */
   .pyt-srodek { max-width: 760px; }
+  @media (min-width: 900px) {
+    .pyt-srodek {
+      max-width: none; display: grid; gap: 10px 32px;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      align-items: start;
+    }
+    .pyt-wstep  { grid-column: 1; grid-row: 1; margin: 0 0 6px; }
+    .pyt-limity { grid-column: 1; grid-row: 2; margin: 0; align-self: start; }
+    .pyt-wiersz { grid-column: 2; grid-row: 1; max-width: none; }
+    .pyt-odpowiedz { grid-column: 2; grid-row: 2; margin-top: 0; }
+    .pyt-przyklady { grid-column: 2; grid-row: 3; margin-top: 0; }
+  }
   .pyt-wstep { font-size: 13px; line-height: 1.45; margin: 0 0 6px; }
   .pyt-limity {
     font-size: 12px; line-height: 1.4; color: var(--muted); margin: 0 0 12px;
